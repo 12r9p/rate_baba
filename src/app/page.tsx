@@ -87,11 +87,7 @@ export default function Home() {
         // Generate 4-character ID (Numbers + Uppercase)
         const generateShortId = () => {
             const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-            let result = '';
-            for (let i = 0; i < 4; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
+            return Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
         };
 
         const roomId = generateShortId();
@@ -259,9 +255,6 @@ export default function Home() {
                                             <input
                                                 type="text"
                                                 value={joinRoomId}
-                                                // Wait, I should create a new state for joinRoomId in the file first?
-                                                // Ah, I need to create state first. I will use a separate apply for that.
-                                                // For now, let's assume I added 'joinRoomId' state.
                                                 onChange={(e) => setJoinRoomId(e.target.value.toUpperCase().slice(0, 4))}
                                                 maxLength={4}
                                                 className="w-full bg-white border border-slate-200 text-lg font-bold pt-8 pb-3 px-4 rounded-xl focus:outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100 transition-all placeholder:text-slate-200 text-slate-800 uppercase"

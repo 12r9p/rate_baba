@@ -1,8 +1,8 @@
-import Database from 'better-sqlite3';
+import { Database } from "bun:sqlite";
 import path from 'path';
 
 const dbPath = path.resolve(process.cwd(), 'game.db');
-const db = new Database(dbPath); // verbose: console.log for debug
+const db = new Database(dbPath, { create: true });
 
 // Initialize Tables
 const initDb = () => {

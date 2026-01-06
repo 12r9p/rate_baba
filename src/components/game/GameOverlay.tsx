@@ -15,6 +15,7 @@ interface GameOverlayProps {
     detailPlayer: Player | null;
     setDetailPlayer: (player: Player | null) => void;
     voteToSkip: () => void;
+    shuffleHand: () => void;
     resetGame: (hard: boolean) => void;
     stablePlayers: Player[]; // Passing stableSorted players for result
 }
@@ -23,7 +24,7 @@ export function GameOverlay({
     gameState, myPlayer, isMyTurn,
     showHistory, setShowHistory,
     detailPlayer, setDetailPlayer,
-    voteToSkip, resetGame, stablePlayers
+    voteToSkip, shuffleHand, resetGame, stablePlayers
 }: GameOverlayProps) {
 
     return (
@@ -62,6 +63,7 @@ export function GameOverlay({
                     rate={myPlayer.rate}
                     rank={myPlayer.rank}
                     onClick={() => setDetailPlayer(myPlayer)}
+                    onShuffle={shuffleHand}
                     isMyTurn={isMyTurn}
                 />
             )}

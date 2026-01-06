@@ -21,8 +21,16 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
         }
     }, []);
 
-    const { gameState, loading, myPlayer, myPlayerId, startGame, sendMessage, kickPlayer, updateRoomName } = useGame(roomId, { enabled: hasName });
+    const { gameState, loading, myPlayer, myPlayerId, startGame, sendMessage, kickPlayer, updateRoomName, addBot } = useGame(roomId, { enabled: hasName });
     const [showQRCode, setShowQRCode] = useState(false);
+
+    // CPU Name State
+    const [botName, setBotName] = useState("");
+
+    const handleAddBot = () => {
+        addBot(botName);
+        setBotName("");
+    };
 
     // Local state for Room Name to support IME
     const [localRoomName, setLocalRoomName] = useState("");
@@ -110,126 +118,148 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8 relative overflow-y-auto">
-            {/* Ambient BG */}
-            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-200/20 blur-[150px] rounded-full pointer-events-none" />
+        <div className="fixed inset-0 overflow-y-auto bg-slate-50 scroll-smooth">
+            <div className="min-h-full w-full flex flex-col items-center justify-center p-8 relative">
+                {/* Ambient BG */}
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-200/20 blur-[150px] rounded-full pointer-events-none" />
 
-            <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white/80 backdrop-blur-xl border border-white p-10 rounded-3xl shadow-xl w-full max-w-md text-center relative z-10"
-            >
-                <div className="absolute top-6 left-6 group">
-                    <motion.button
-                        whileHover={{ scale: 1.1, x: -3 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => window.location.href = "/"}
-                        className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-colors shadow-sm cursor-pointer"
-                    >
-                        ←
-                    </motion.button>
-                    <span className="absolute left-12 top-2 text-[10px] font-bold text-slate-300 pointer-events-none tracking-widest pl-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">HOME</span>
-                </div>
-
-                <div className="mb-2 text-4xl">🃏</div>
-
-                {/* Room ID Display */}
-                <div className="text-sm font-bold text-slate-400 tracking-widest mb-1">
-                    ROOM ID: <span className="text-slate-800 font-mono text-base">{roomId}</span>
-                </div>
-
-                {/* Editable Room Name */}
-                <div className="mb-2 flex justify-center">
-                    <input
-                        type="text"
-                        value={localRoomName}
-                        onFocus={() => setIsEditingName(true)}
-                        onBlur={() => {
-                            setIsEditingName(false);
-                            if (localRoomName !== gameState?.roomName) {
-                                updateRoomName(localRoomName);
-                            }
-                        }}
-                        onChange={(e) => setLocalRoomName(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                            }
-                        }}
-                        className="text-3xl font-black text-center text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-slate-800 focus:outline-none transition-colors w-full max-w-[300px]"
-                        placeholder="Set Room Name"
-                    />
-                </div>
-                <p className="text-slate-500 mb-8 font-medium">Lobby - Waiting for players...</p>
-
-                <div className="space-y-3 mb-8">
-                    {gameState.players.map(p => (
-                        <motion.div
-                            key={p.id}
-                            layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl relative"
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="bg-white/80 backdrop-blur-xl border border-white p-10 rounded-3xl shadow-xl w-full max-w-md text-center relative z-10 my-auto"
+                >
+                    <div className="absolute top-6 left-6 group">
+                        <motion.button
+                            whileHover={{ scale: 1.1, x: -3 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => window.location.href = "/"}
+                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-colors shadow-sm cursor-pointer"
                         >
-                            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
-                            <span className="font-bold text-slate-700 tracking-wide flex items-center gap-2">
-                                {p.name}
-                            </span>
-
-                            {p.id === myPlayerId && <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded ml-auto">YOU</span>}
-
-                            {p.id !== myPlayerId && (
-                                <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => { kickPlayer(p.id); }}
-                                    className="ml-auto w-6 h-6 rounded-full bg-red-50 text-red-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors absolute right-2"
-                                    title="Kick Player"
-                                >
-                                    ✕
-                                </motion.button>
-                            )}
-                        </motion.div>
-                    ))}
-                    {gameState.players.length === 0 && (
-                        <div className="text-slate-400 italic pb-4">No players yet</div>
-                    )}
-                </div>
-
-                <div className="flex flex-col gap-4">
-                    <button
-                        onClick={startGame}
-                        disabled={gameState.players.length < 2}
-                        className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl"
-                    >
-                        START GAME
-                    </button>
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setShowQRCode(true)}
-                            className="flex-1 bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-xs border border-slate-200 transition-colors shadow-sm"
-                        >
-                            📱 INVITE QR
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(shareUrl);
-                                alert("Link copied to clipboard!");
-                            }}
-                            className="flex-1 bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-xs border border-slate-200 transition-colors shadow-sm"
-                        >
-                            🔗 COPY LINK
-                        </button>
+                            ←
+                        </motion.button>
+                        <span className="absolute left-12 top-2 text-[10px] font-bold text-slate-300 pointer-events-none tracking-widest pl-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">HOME</span>
                     </div>
-                </div>
-            </motion.div>
 
-            <ChatBox
-                messages={gameState.messages}
-                onSend={sendMessage}
-                myPlayerId={myPlayerId ?? undefined}
-            />
+                    <div className="mb-2 text-4xl">🃏</div>
+
+                    {/* Room ID Display */}
+                    <div className="text-sm font-bold text-slate-400 tracking-widest mb-1">
+                        ROOM ID: <span className="text-slate-800 font-mono text-base">{roomId}</span>
+                    </div>
+
+                    {/* Editable Room Name */}
+                    <div className="mb-2 flex justify-center">
+                        <input
+                            type="text"
+                            value={localRoomName}
+                            onFocus={() => setIsEditingName(true)}
+                            onBlur={() => {
+                                setIsEditingName(false);
+                                if (localRoomName !== gameState?.roomName) {
+                                    updateRoomName(localRoomName);
+                                }
+                            }}
+                            onChange={(e) => setLocalRoomName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            className="text-3xl font-black text-center text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-slate-800 focus:outline-none transition-colors w-full max-w-[300px]"
+                            placeholder="Set Room Name"
+                        />
+                    </div>
+                    <p className="text-slate-500 mb-8 font-medium">Lobby - Waiting for players...</p>
+
+                    <div className="space-y-3 mb-8">
+                        {gameState.players.map(p => (
+                            <motion.div
+                                key={p.id}
+                                layout
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl relative"
+                            >
+                                <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
+                                <span className="font-bold text-slate-700 tracking-wide flex items-center gap-2">
+                                    {p.name}
+                                </span>
+
+                                {p.id === myPlayerId && <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded ml-auto">YOU</span>}
+                                {p.isBot && <span className="text-[10px] font-bold bg-indigo-100 text-indigo-500 px-2 py-1 rounded ml-2">BOT</span>}
+
+                                {p.id !== myPlayerId && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => { kickPlayer(p.id); }}
+                                        className="ml-auto w-6 h-6 rounded-full bg-red-50 text-red-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors absolute right-2"
+                                        title="Kick Player"
+                                    >
+                                        ✕
+                                    </motion.button>
+                                )}
+                            </motion.div>
+                        ))}
+                        {gameState.players.length === 0 && (
+                            <div className="text-slate-400 italic pb-4">No players yet</div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                        <button
+                            onClick={startGame}
+                            disabled={gameState.players.length < 2}
+                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl"
+                        >
+                            START GAME
+                        </button>
+
+                        {/* CPU Add Section */}
+                        {gameState.phase === 'LOBBY' && (
+                            <div className="flex gap-2 bg-slate-100 p-2 rounded-xl">
+                                <input
+                                    className="flex-1 bg-white rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none border border-slate-200 focus:border-indigo-400 transition-colors"
+                                    placeholder="CPU Name (Optional)"
+                                    value={botName}
+                                    onChange={(e) => setBotName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddBot()}
+                                />
+                                <button
+                                    onClick={handleAddBot}
+                                    className="bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-indigo-600 transition-colors shadow-sm whitespace-nowrap"
+                                >
+                                    + ADD CPU
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowQRCode(true)}
+                                className="flex-1 bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-xs border border-slate-200 transition-colors shadow-sm"
+                            >
+                                📱 INVITE QR
+                            </button>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(shareUrl);
+                                    alert("Link copied to clipboard!");
+                                }}
+                                className="flex-1 bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-xs border border-slate-200 transition-colors shadow-sm"
+                            >
+                                🔗 COPY LINK
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <ChatBox
+                    messages={gameState.messages}
+                    onSend={sendMessage}
+                    myPlayerId={myPlayerId ?? undefined}
+                />
+            </div>
 
             <AnimatePresence>
                 {showQRCode && (

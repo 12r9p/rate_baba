@@ -22,7 +22,7 @@ interface GameClientProps {
 }
 
 export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
-    const { gameState, loading, myPlayer, myPlayerId, startGame, drawCard, tease, resetGame, voteToSkip, sendMessage, kickPlayer } = useGame(roomId, { isSpectator });
+    const { gameState, loading, myPlayer, myPlayerId, startGame, drawCard, tease, resetGame, voteToSkip, sendMessage, kickPlayer, shuffleHand } = useGame(roomId, { isSpectator });
     const [focusTargetId, setFocusTargetId] = useState<string | null>(null);
     const [detailPlayer, setDetailPlayer] = useState<any | null>(null);
     const [showHistory, setShowHistory] = useState(false);
@@ -174,6 +174,7 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
                 detailPlayer={detailPlayer}
                 setDetailPlayer={setDetailPlayer}
                 voteToSkip={voteToSkip}
+                shuffleHand={shuffleHand}
                 resetGame={resetGame}
                 stablePlayers={stablePlayers}
             />

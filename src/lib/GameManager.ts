@@ -1,5 +1,5 @@
-
 import { GameState, Player, Card } from '@/types/game';
+
 import { calculateRateChange, applyRateChange } from './rating';
 import { discardPairs } from './gameLogic';
 import { v4 as uuidv4 } from 'uuid';
@@ -66,30 +66,24 @@ export class GameManager {
 
     // Spectator view logic: mask hands of others
     getMaskedState(): GameState {
+        return this.getPersonalizedState('');
+    }
+
+    getPersonalizedState(viewerId: string): GameState {
         // Deep clone state to avoid mutating original
         const masked = JSON.parse(JSON.stringify(this.state)) as GameState;
         
-        // Mask all hands (replace with empty objects or just keep length)
-        // We'll keep the objects but remove suit/number for privacy
-        // Ideally client just renders back if unknown.
-        // But for safety, we should remove data.
         masked.players.forEach(p => {
-             // We only need the count.
-             // But the client code might expect 'Card' objects.
-             // Let's replace suit/number with '?' or similar if we strictly want to hide.
-             // BUT, useGame uses `p.hand.length`.
-             // If we just want to hide content, we can set them to 'back'.
-             // For now, let's trust the client not to "inspect element" CHEAT.
-             // The user requested "All cards hidden, only count visible" for join-in-progress/spectator.
-             // So we SHOULD scrub data.
-             p.hand = p.hand.map(c => ({ 
-                 id: c.id, 
-                 suit: 'back' as any, // Special suit/number? Or just Keep ID
-                 number: 0
-             }));
+             // If NOT the viewer, mask the hand
+             if (p.id !== viewerId) {
+                 p.hand = p.hand.map(c => ({ 
+                     id: c.id, 
+                     suit: 'back' as any,
+                     number: 0
+                 }));
+             }
         });
         
-        // Also mask lastDiscard if it reveals too much? usually public info.
         return masked;
     }
 
@@ -248,7 +242,9 @@ export class GameManager {
         // 2. Shuffle
         for (let i = deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [deck[i], deck[j]] = [deck[j], deck[i]];
+            const temp = deck[i];
+            deck[i] = deck[j];
+            deck[j] = temp;
         }
 
         // 3. Deal
@@ -373,6 +369,24 @@ export class GameManager {
          player.hand[cardIndex].isHighlighted = !isHi;
     }
 
+    shuffleHand(playerId: string) {
+        if (this.state.phase !== 'PLAYING') return;
+        
+        const pIdx = this.state.players.findIndex(p => p.id === playerId);
+        if (pIdx === -1) return;
+        
+        const player = this.state.players[pIdx];
+        if (player.hand.length <= 1) return; // No need to shuffle 0 or 1 card
+
+        // Fisher-Yates Shuffle
+        for (let i = player.hand.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = player.hand[i];
+            player.hand[i] = player.hand[j];
+            player.hand[j] = temp;
+        }
+    }
+
     private checkFinished() {
          let finishedCount = this.state.players.filter(p => p.rank !== null).length;
          
@@ -493,17 +507,83 @@ export class GameManager {
 
     private turnTimer: NodeJS.Timeout | null = null;
 
+    addBot(name: string) {
+        if (this.state.phase !== 'LOBBY') return;
+        
+        const botId = `bot_${uuidv4()}`;
+        const botName = name || `CPU ${this.state.players.filter(p => p.isBot).length + 1}`;
+        
+        const newPlayer: Player = {
+            id: botId,
+            name: botName,
+            hand: [],
+            rank: null,
+            previousRank: null,
+            rate: 1000,
+            rateHistory: [],
+            isBot: true,
+            finishedAt: null
+        };
+
+        this.state.players.push(newPlayer);
+        // Do NOT set owner to bot if empty? Maybe.
+        if (!this.state.ownerId && this.state.players.length === 1) {
+            this.state.ownerId = newPlayer.id; // Technically allows bot owner, but fine for now.
+        }
+    }
+
     private startTurnTimer() {
         this.stopTurnTimer();
         if (this.state.phase !== 'PLAYING') return;
+
+        const currentPlayer = this.state.players.find(p => p.id === this.state.currentTurnPlayerId);
+        if (currentPlayer && currentPlayer.isBot) {
+            console.log(`Bot Turn: ${currentPlayer.name}`);
+            setTimeout(() => {
+                this.botTurn(currentPlayer.id);
+            }, 1000 + Math.random() * 1000); // 1-2s delay
+            return;
+        }
 
         console.log(`Starting turn timer for ${this.state.currentTurnPlayerId}`);
         this.turnTimer = setTimeout(() => {
             console.log("Turn Timer Expired! Forcing Draw...");
             this.forceRandomDraw();
-            // Since this is async/background, we must broadcast the update manually
-            this.io.to(this.roomId).emit('update', this.state);
+            // Since this is async/background, we must broadcast the use personalized update manually
+            // We need a way to call the personalized broadcast from here? 
+            // The `io` object is available. But `getPersonalizedState` logic was in server.ts loop?
+            // Actually, we can move the loop logic to a helper or just emit full state for now? 
+            // Wait, if I emit full state, I regress on the "Flash" fix.
+            // I should duplicate the personalized broadcast loop here or make a helper.
+            // For now, I'll copy the loop logic.
+             (async () => {
+                 const sockets = await this.io.in(this.roomId).fetchSockets();
+                 sockets.forEach(s => {
+                    const viewerId = (s as any).playerId || '';
+                    s.emit('update', this.getPersonalizedState(viewerId));
+                 });
+             })();
         }, 30000); // 30 seconds
+    }
+
+    private botTurn(botId: string) {
+        if (this.state.phase !== 'PLAYING') return;
+        if (this.state.currentTurnPlayerId !== botId) return;
+
+        // Bot Logic: Just Draw Random
+        if (!this.state.targetPlayerId) return;
+        
+        // Use existing shuffle/random logic inside draw by passing undefined index
+        this.draw(botId, this.state.targetPlayerId); // undefined index -> random
+        
+        // Broadcast Update
+        (async () => {
+             const sockets = await this.io.in(this.roomId).fetchSockets();
+             sockets.forEach(s => {
+                const viewerId = (s as any).playerId || '';
+                s.emit('update', this.getPersonalizedState(viewerId));
+             });
+         })();
     }
 
     private stopTurnTimer() {

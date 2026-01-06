@@ -123,6 +123,8 @@ export function useGame(roomId?: string, options: { isSpectator?: boolean, enabl
     refresh,
     sendMessage,
     kickPlayer,
-    updateRoomName: (name: string) => sendAction('update-room-name', { name })
+    updateRoomName: (name: string) => sendAction('update-room-name', { name }),
+    shuffleHand: () => sendAction('shuffleHand'),
+    addBot: (name: string) => sendAction('add-bot', { name })
   };
 }

@@ -108,7 +108,7 @@ export const OpponentArea = memo(function OpponentArea({
                                 initial={false}
                                 className={clsx(
                                     "absolute top-0 will-change-transform flex items-center justify-center transition-colors duration-200",
-                                    canDraw ? "hover:-translate-y-4 cursor-pointer" : ""
+                                    canDraw ? "cursor-pointer" : ""
                                 )}
                                 animate={{
                                     x: xOffset,
@@ -117,6 +117,10 @@ export const OpponentArea = memo(function OpponentArea({
                                     scale: canDraw ? 1.05 : 1, // Reduced scale from 1.3 to 1.05
                                     zIndex: cIdx
                                 }}
+                                whileHover={canDraw ? {
+                                    zIndex: 100,
+                                    scale: 1.1,
+                                } : undefined}
                                 style={{
                                     left: '50%',
                                     // Adjust center offset based on card width
@@ -138,6 +142,7 @@ export const OpponentArea = memo(function OpponentArea({
                                     width={showFaceUp ? 60 : 48}
                                     isFaceDown={!showFaceUp}
                                     isHighlighted={isTeasing}
+                                    hoverable={canDraw}
                                     className={clsx(
                                         "shadow-sm transition-all duration-200",
                                         // Hover effect for drawing
