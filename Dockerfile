@@ -5,13 +5,16 @@ WORKDIR /app
 
 # 依存関係のインストール
 FROM base AS deps
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile --production
+COPY package.json ./
+# bun.lockまたはbun.lockbをコピー（バージョンにより異なる）
+COPY bun.lock* ./
+RUN bun install --frozen-lockfile --production || bun install --production
 
 # ビルドステージ
 FROM base AS builder
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
+COPY package.json ./
+COPY bun.lock* ./
+RUN bun install --frozen-lockfile || bun install
 COPY . .
 
 # Next.jsのビルド
