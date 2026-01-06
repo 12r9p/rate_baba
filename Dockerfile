@@ -47,7 +47,8 @@ COPY --from=deps /app/node_modules ./node_modules
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 # nextjsユーザーに切り替え
-USER nextjs
+# nextjsユーザーに切り替え
+# USER nextjs
 
 # ポートを公開
 EXPOSE 3000
