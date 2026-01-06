@@ -2,21 +2,26 @@
 
 import { useGame } from "@/hooks/useGame";
 import { useState } from "react";
+import { OpponentArea } from "@/components/OpponentArea";
+import { DiscardAnimation } from "@/components/DiscardAnimation";
+import { clsx } from "clsx";
 
 export default function AdminPage() {
-    const { gameState, startGame, resetGame, refresh } = useGame();
+    const { gameState, startGame, resetGame, refresh, adminDraw } = useGame();
     const [loading, setLoading] = useState(false);
 
     if (!gameState) return <div className="p-8">Loading Game State...</div>;
 
-    const handleAction = async (action: () => Promise<any>) => {
+    const handleAction = (action: () => void) => {
         setLoading(true);
-        await action();
-        setLoading(false);
+        action();
+        // Socket updates are async, but emit is sync. 
+        // We add a small delay to prevent button spam/flicker
+        setTimeout(() => setLoading(false), 500);
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 p-8 font-sans">
+        <div className="h-screen overflow-y-auto bg-slate-50 text-slate-800 p-8 font-sans">
             <div className="max-w-6xl mx-auto">
                 <header className="flex justify-between items-center mb-12">
                     <h1 className="text-3xl font-bold text-slate-900 border-l-8 border-yellow-500 pl-4">Admin Console</h1>
@@ -67,18 +72,25 @@ export default function AdminPage() {
                                                 // Force Play Logic
                                                 const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurnPlayerId);
                                                 if (!currentPlayer) return;
-                                                const opponents = gameState.players.filter(p => p.id !== currentPlayer.id && p.hand.length > 0);
-                                                if (opponents.length === 0) return;
-                                                const randomTarget = opponents[Math.floor(Math.random() * opponents.length)];
 
-                                                await fetch('/api/game/draw', {
-                                                    method: 'POST',
-                                                    body: JSON.stringify({
-                                                        playerId: currentPlayer.id,
-                                                        targetPlayerId: randomTarget.id
-                                                    }),
+                                                // Identify target (logic matches GameManager.updateTarget somewhat, or just pick any valid neighbor)
+                                                // For "Random Move", picking ANY valid target is fine for debug.
+                                                // But let's try to follow rule: Next Active Player.
+
+                                                const targetId = gameState.targetPlayerId;
+                                                const targetPlayer = gameState.players.find(p => p.id === targetId);
+
+                                                if (!targetPlayer || targetPlayer.hand.length === 0) {
+                                                    alert("No valid target found.");
+                                                    return;
+                                                }
+
+                                                // Pick random card
+                                                const randIdx = Math.floor(Math.random() * targetPlayer.hand.length);
+
+                                                handleAction(() => {
+                                                    adminDraw(currentPlayer.id, targetPlayer.id, randIdx);
                                                 });
-                                                refresh();
                                             }}
                                             className="w-full py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
                                         >
@@ -131,9 +143,9 @@ export default function AdminPage() {
                                                     </span>
                                                 ) : '-'}
                                             </td>
-                                            <td className="p-4 text-center">{p.hand.length}</td>
+                                            <td className="p-4 text-center">{p.hand?.length || 0}</td>
                                             <td className="p-4 text-right opacity-50 text-xs font-mono">
-                                                {p.rateHistory.join(' → ')}
+                                                {p.rateHistory?.join(' → ') || ''}
                                             </td>
                                         </tr>
                                     ))}
@@ -149,7 +161,17 @@ export default function AdminPage() {
                         </div>
                     </div>
                 </div>
+
+
             </div>
+
+            {/* Global Animations */}
+            {gameState.lastDiscard && (
+                <DiscardAnimation
+                    lastDiscard={gameState.lastDiscard}
+                    myPlayerId={undefined}
+                />
+            )}
         </div>
     );
 }

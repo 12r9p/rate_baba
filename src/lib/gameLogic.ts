@@ -51,8 +51,9 @@ export function dealCards(players: Player[], deck: Card[]): { players: Player[],
   return { players: newPlayers, deck: [] };
 }
 
-export function discardPairs(hand: Card[]): Card[] {
+export function discardPairs(hand: Card[]): { hand: Card[]; discarded: Card[] } {
   const newHand: Card[] = [];
+  const discarded: Card[] = [];
   const checked = new Set<string>();
 
   for (let i = 0; i < hand.length; i++) {
@@ -67,12 +68,13 @@ export function discardPairs(hand: Card[]): Card[] {
     }
 
     if (pairIndex !== -1) {
-      // Found pair, discard both (don't add to newHand)
+      // Found pair, discard both
       checked.add(hand[i].id);
       checked.add(hand[pairIndex].id);
+      discarded.push(hand[i], hand[pairIndex]);
     } else {
       newHand.push(hand[i]);
     }
   }
-  return newHand;
+  return { hand: newHand, discarded };
 }

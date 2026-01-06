@@ -4,6 +4,7 @@ export type Card = {
   id: string;
   suit: Suit;
   number: number; // 0 for Joker, 1-13 for others
+  isHighlighted?: boolean; // For tease feature
 };
 
 export type Player = {
@@ -26,5 +27,8 @@ export type GameState = {
   players: Player[];
   currentTurnPlayerId: string | null;
   deck: Card[];
+  winners: string[];
   roundCount: number; // How many games played
+  lastDiscard: { playerId: string; cards: Card[] } | null;
+  targetPlayerId: string | null; // The player who is currently being targeted (drawn from)
 };

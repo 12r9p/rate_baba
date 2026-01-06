@@ -1,81 +1,75 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Player } from '@/types/game';
+import { io, Socket } from 'socket.io-client';
 
 export function useGame() {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    // Initialize Socket
+    // Fetch logic removed, replaced by WebSocket
+    const socket = io(); // Auto-connects to same origin
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+    });
+
+    socket.on('update', (state: GameState) => {
+        console.log('[WS] State Update:', state.phase, state.currentTurnPlayerId);
+        setGameState(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(state)) return prev;
+            return state;
+        });
+        setLoading(false);
+    });
+
     // Load ID from local storage
     const storedId = localStorage.getItem('babanuki_player_id');
     if (storedId) setMyPlayerId(storedId);
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  const fetchState = useCallback(async () => {
-    try {
-      const res = await fetch('/api/game');
-      if (!res.ok) throw new Error('Failed to fetch state');
-      const data = await res.json();
-      setGameState(data);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchState();
-    const interval = setInterval(fetchState, 1000); // Poll every 1s
-    return () => clearInterval(interval);
-  }, [fetchState]);
-
-  const joinGame = async (name: string) => {
+  const joinGame = useCallback((name: string) => {
+    if (!socketRef.current) return;
     setLoading(true);
-    try {
-      const res = await fetch('/api/game/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMyPlayerId(data.id);
-        localStorage.setItem('babanuki_player_id', data.id);
-        fetchState();
-      } else {
-        setError(data.error);
-      }
-    } catch (err) {
-      setError('Failed to join');
-    } finally {
-      setLoading(false);
-    }
-  };
+    socketRef.current.emit('join', { name }, (player: Player) => {
+        setMyPlayerId(player.id);
+        localStorage.setItem('babanuki_player_id', player.id);
+        setLoading(false);
+    });
+  }, []);
 
-  const startGame = async () => {
-    await fetch('/api/game/start', { method: 'POST' });
-    fetchState();
-  };
+  const startGame = useCallback(() => {
+    socketRef.current?.emit('start');
+  }, []);
 
-  const drawCard = async (targetPlayerId: string, cardIndex?: number) => {
+  const drawCard = useCallback((targetPlayerId: string, cardIndex?: number) => {
     if (!myPlayerId) return;
-    await fetch('/api/game/draw', {
-      method: 'POST',
-      body: JSON.stringify({ playerId: myPlayerId, targetPlayerId, cardIndex }),
-    });
-    fetchState();
-  };
+    socketRef.current?.emit('draw', { playerId: myPlayerId, targetPlayerId, cardIndex });
+  }, [myPlayerId]);
 
-  const resetGame = async (hardReset: boolean) => {
-    await fetch('/api/game/reset', {
-      method: 'POST',
-      body: JSON.stringify({ hardReset }),
-    });
-    fetchState();
-  };
+  const adminDraw = useCallback((actorId: string, targetPlayerId: string, cardIndex?: number) => {
+    socketRef.current?.emit('draw', { playerId: actorId, targetPlayerId, cardIndex });
+  }, []);
+
+  const tease = useCallback((cardIndex: number) => {
+    if (!myPlayerId) return;
+    socketRef.current?.emit('tease', { playerId: myPlayerId, cardIndex });
+  }, [myPlayerId]);
+
+  const resetGame = useCallback((hardReset: boolean) => {
+    socketRef.current?.emit('reset', { hardReset });
+  }, []);
 
   const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
 
@@ -88,7 +82,9 @@ export function useGame() {
     joinGame,
     startGame,
     drawCard,
+    adminDraw,
+    tease,
     resetGame,
-    refresh: fetchState
+    refresh: () => {} // No-op for now as socket pushes updates
   };
 }

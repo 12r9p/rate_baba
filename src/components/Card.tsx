@@ -27,8 +27,9 @@ export function Card({
     selected,
     hoverable = true,
     width = 120,
-    disabled = false
-}: CardProps) {
+    disabled = false,
+    isHighlighted = false
+}: CardProps & { isHighlighted?: boolean }) {
     const height = width * 1.5; // Slightly taller aspect ratio typical of modern UI cards
 
     const isRed = suit === 'heart' || suit === 'diamond';
@@ -101,18 +102,36 @@ export function Card({
                 </div>
             </div>
 
-            {/* BACK */}
+            {/* BACK - Rich Design */}
             <div
                 className={clsx(
                     "absolute inset-0 backface-hidden rotate-y-180 rounded-[16px] overflow-hidden",
-                    "bg-slate-800 shadow-xl border border-slate-700"
+                    "shadow-xl border-4 border-white" // White border for classic look
                 )}
+                style={{
+                    backgroundColor: '#1e3a8a', // Deep Indigo
+                    backgroundImage: `
+                        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%),
+                        repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px),
+                        repeating-linear-gradient(-45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px)
+                    `
+                }}
             >
-                <div className="w-full h-full opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white/30 font-bold tracking-widest text-xs border border-white/20 px-2 py-1 rounded">R-B</div>
+                    {/* Center Emblem */}
+                    <div className="w-16 h-24 border-2 border-white/30 rounded-lg flex items-center justify-center bg-white/10 backdrop-blur-sm">
+                        <div className="text-white/80 font-serif font-bold tracking-widest text-lg"></div>
+                    </div>
                 </div>
             </div>
+
+            {/* HIGHLIGHT OVERLAY - Applied on top of everything (z-index managed by stacking context if needed, but absolute inset-0 works) */}
+            {isHighlighted && (
+                <div
+                    className="absolute inset-0 bg-yellow-400/40 rounded-[16px] z-50 pointer-events-none animate-pulse"
+                    style={{ boxShadow: "0 0 20px rgba(250, 204, 21, 0.5)" }}
+                />
+            )}
         </motion.div>
     );
 }

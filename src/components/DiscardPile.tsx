@@ -1,69 +1,73 @@
-'use client';
-
+// DiscardPile.tsx
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Card } from "./Card";
+import { Card as CardType } from "@/types/game";
 
 type DiscardedCard = {
     id: string;
+    suit: CardType['suit'];
+    number: CardType['number'];
     angle: number;
     x: number;
     y: number;
 };
 
-export function DiscardPile({ count }: { count: number }) {
+type Props = {
+    lastDiscard: { playerId: string; cards: CardType[] } | null;
+};
+
+export function DiscardPile({ lastDiscard }: Props) {
     const [pile, setPile] = useState<DiscardedCard[]>([]);
 
-    // Sync pile size with count (approximate visualization)
     useEffect(() => {
-        // If count increases, add cards
-        // If count decreases (reset), clear
-        if (count < pile.length) {
-            setPile([]);
-            return;
-        }
+        if (!lastDiscard) return;
 
-        if (count > pile.length) {
-            const newCards: DiscardedCard[] = [];
-            for (let i = pile.length; i < count; i++) {
-                newCards.push({
-                    id: `discard-${i}-${Math.random()}`,
-                    angle: Math.random() * 360,
-                    x: (Math.random() - 0.5) * 40,
-                    y: (Math.random() - 0.5) * 40
-                });
+        // Add new cards to the pile
+        const newCards: DiscardedCard[] = lastDiscard.cards.map((c, i) => ({
+            id: `${c.id}-${Date.now()}`, // Unique ID for loop
+            suit: c.suit,
+            number: c.number,
+            angle: Math.random() * 60 - 30, // Random rotation -30 to 30
+            x: (Math.random() - 0.5) * 40,  // Random jitter
+            y: (Math.random() - 0.5) * 40
+        }));
+
+        setPile(prev => {
+            // Keep max 20 cards to prevent performance issues
+            const updated = [...prev, ...newCards];
+            if (updated.length > 20) {
+                return updated.slice(updated.length - 20);
             }
-            setPile(prev => [...prev, ...newCards]);
-        }
-    }, [count, pile.length]);
+            return updated;
+        });
+    }, [lastDiscard]);
 
     return (
-        <div className="relative w-32 h-32 flex items-center justify-center opacity-80 pointer-events-none">
-            {/* Base */}
-            <div className="absolute inset-0 border-2 border-white/10 rounded-full scale-150 animate-pulse" />
+        <div className="relative w-32 h-40 flex items-center justify-center">
+            {/* Empty State placeholder (only if empty) */}
+            {pile.length === 0 && (
+                <div className="absolute inset-0 border-2 border-white/10 rounded-xl flex items-center justify-center opacity-50">
+                    <span className="text-white/20 text-xs font-bold tracking-widest uppercase">Discard</span>
+                </div>
+            )}
 
             {pile.map((c, i) => (
                 <motion.div
                     key={c.id}
-                    initial={{ scale: 2, opacity: 0, y: -200 }} // Fly in from top (or generic)
+                    initial={{ scale: 1.5, opacity: 0, y: -50 }}
                     animate={{ scale: 1, opacity: 1, y: c.y, x: c.x, rotate: c.angle }}
                     className="absolute"
                     style={{ zIndex: i }}
                 >
                     <Card
-                        isFaceDown={false} // Show messes usually face up or down? Face up is more colorful.
-                        suit="joker" // Mock
-                        number={0}   // Mock, or maybe show back? 
-                    // Actually, discarded pairs are crucial info in Baba Nuki? 
-                    // Standard rule: Discarded pairs are usually shown? 
-                    // Or just "Trash"? Let's stick to Face Down "Trash" look or Back.
-                    // User said "Discard animation... messily pile up".
+                        suit={c.suit}
+                        number={c.number}
+                        width={90} // Slightly smaller than hand cards
+                        isFaceDown={false}
+                        className="shadow-md"
+                        disabled
                     />
-                    {/* Let's just use Face Down for generic pile, or Face Up if we knew what it was. 
-                 Since we don't receive WHAT was discarded easily without diffing, let's use Face Down Backs
-                 but maybe tinted dark to show "Trash".
-             */}
-                    <div className="w-24 h-32 bg-slate-800 rounded-lg border border-slate-600 shadow-sm" />
                 </motion.div>
             ))}
         </div>
