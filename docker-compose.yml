@@ -13,6 +13,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DB_PATH=/app/data/game.db
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key-change-in-prod}
     volumes:
       # SQLiteデータベースの永続化
       - ./data:/app/data

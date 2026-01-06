@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = 3000;
-const JWT_SECRET = "super-secret-key-change-in-prod";
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-in-prod";
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
