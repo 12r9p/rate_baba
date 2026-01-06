@@ -45,10 +45,7 @@ export const OpponentArea = memo(function OpponentArea({
                 scale: isTurn ? 1.05 : 1,
                 y: isTurn ? (canDraw ? 0 : 0) : 20 // If canDraw (Center), no y offset needed
             }}
-            className={clsx(
-                "flex flex-col items-center gap-2",
-                canDraw ? "fixed top-[10%] left-1/2 -translate-x-1/2 z-50" : "relative"
-            )}
+            className="flex flex-col items-center gap-6 relative"
         >
             <div
                 className="relative z-20 cursor-pointer transition-all duration-500 rounded-full"
@@ -100,7 +97,7 @@ export const OpponentArea = memo(function OpponentArea({
 
                         const xOffset = (cIdx - center) * spread;
                         // Move down slightly when active to invite interaction
-                        const yOffset = isActive ? (canDraw ? 0 : 40) : 0;
+                        const yOffset = isActive ? (canDraw ? 10 : 40) : 0;
 
                         const isTeasing = card.isHighlighted;
 

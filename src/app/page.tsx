@@ -141,29 +141,28 @@ export default function Home() {
                 <div className="flex gap-8 min-w-max mx-auto px-16">
                     {others.map((p, idx) => {
                         const isTurn = gameState.currentTurnPlayerId === p.id;
-                        // const isRightNeighbor = idx === 0; // Old logic
                         const isTarget = gameState.targetPlayerId === p.id;
                         const canDraw = Boolean(isMyTurn && isTarget && p.hand.length > 0);
 
-                        // Spotlight logic: 
-                        // If it's drawing phase, only the person we can draw from (canDraw=true) should be above the backdrop.
-                        // Backdrop is z-30.
-                        // Targeted player -> z-40
-                        // Others -> z-20 (default container z-index covers this, but we can be explicit)
-                        const zIndexClass = isDrawingPhase
-                            ? (canDraw ? "z-40" : "z-20")
-                            : "z-20";
-
-                        // Spotlight visual effect:
-                        // If this is the active target, add a glow behind them
-                        const showGlow = isDrawingPhase && canDraw;
-
-                        // Calculate dynamic spacing based on hand size
-                        // Base: 120px (Avatar) + Cards spread
-                        // Spread is roughly 30px per card in compact mode
+                        // Dynamic spacing
                         const dynamicMinWidth = Math.max(100, 50 + p.hand.length * 30);
 
-                        // Add pointer-events-auto to children
+                        // If drawing, we render in Portal. Here we render a placeholder to maintain layout.
+                        if (canDraw) {
+                            return (
+                                <div
+                                    key={p.id}
+                                    ref={(el: HTMLDivElement | null) => {
+                                        if (el) opponentRefs.current.set(p.id, el);
+                                        else opponentRefs.current.delete(p.id);
+                                    }}
+                                    className="snap-center flex justify-center shrink-0 transition-all duration-300"
+                                    style={{ minWidth: dynamicMinWidth, height: 300 }}
+                                />
+                            );
+                        }
+
+                        // Normal Opponent Render in List
                         return (
                             <div
                                 key={p.id}
@@ -171,36 +170,66 @@ export default function Home() {
                                     if (el) opponentRefs.current.set(p.id, el);
                                     else opponentRefs.current.delete(p.id);
                                 }}
-                                className={clsx("pointer-events-auto relative transition-all duration-300 snap-center flex justify-center", zIndexClass)}
+                                className="pointer-events-auto relative transition-all duration-300 snap-center flex justify-center z-20"
                                 style={{ minWidth: dynamicMinWidth }}
                             >
-                                {/* Spotlight Glow */}
-                                {showGlow && (
-                                    <motion.div
-                                        layoutId="spotlight-glow"
-                                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-yellow-200/20 blur-[80px] rounded-full -z-10 pointer-events-none"
-                                        initial={{ opacity: 0, scale: 0.5 }}
-                                        animate={{ opacity: 1, scale: 1 }}
+                                <motion.div layoutId={`opponent-${p.id}`} className="w-full flex justify-center">
+                                    <OpponentArea
+                                        player={p}
+                                        isTurn={isTurn}
+                                        canDraw={false} // List view is never interactive for draw
+                                        isFocused={focusTargetId === p.id}
+                                        onSelect={() => setFocusTargetId(p.id)}
+                                        onDetail={() => setDetailPlayer(p)}
+                                        onDraw={(cardIdx) => { }} // No draw in list
                                     />
-                                )}
+                                </motion.div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
 
+            {/* TARGET PORTAL LAYER (Z-100) - Pops out the target player */}
+            <AnimatePresence>
+                {isDrawingPhase && others.map(p => {
+                    const isTarget = gameState.targetPlayerId === p.id;
+                    const canDraw = Boolean(isMyTurn && isTarget && p.hand.length > 0);
+                    if (!canDraw) return null;
+
+                    return (
+                        <div key={p.id} className="fixed top-[15%] left-1/2 -translate-x-1/2 z-[100] pointer-events-auto flex justify-center items-center">
+                            {/* Spotlight Glow - Behind the player */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-200/20 blur-[100px] rounded-full -z-10 pointer-events-none"
+                            />
+
+                            {/* The Player Component - Morphs from list position */}
+                            <motion.div
+                                layoutId={`opponent-${p.id}`}
+                                className="relative"
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
                                 <OpponentArea
                                     player={p}
-                                    isTurn={isTurn}
-                                    canDraw={canDraw}
-                                    isFocused={focusTargetId === p.id}
-                                    onSelect={() => setFocusTargetId(p.id)}
+                                    isTurn={true}
+                                    canDraw={true}
+                                    isFocused={true}
+                                    onSelect={() => { }}
                                     onDetail={() => setDetailPlayer(p)}
                                     onDraw={(cardIdx) => {
                                         drawCard(p.id, cardIdx);
                                         setFocusTargetId(null);
                                     }}
                                 />
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
+                            </motion.div>
+                        </div>
+                    );
+                })}
+            </AnimatePresence>
 
             {/* MY HAND - Using new component */}
             {myPlayer && <MyHand cards={myPlayer.hand} onTease={tease} />}
