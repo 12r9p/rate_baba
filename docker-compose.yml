@@ -12,6 +12,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - DB_PATH=/app/data/game.db
     volumes:
       # SQLiteデータベースの永続化
       - ./data:/app/data

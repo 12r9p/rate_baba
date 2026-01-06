@@ -37,6 +37,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/server.ts ./server.ts
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/next.config.ts ./next.config.ts
 
 # 依存関係をコピー
 COPY --from=deps /app/node_modules ./node_modules
