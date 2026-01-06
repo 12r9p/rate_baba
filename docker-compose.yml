@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  babanuki:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rate-babanuki
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # SQLiteデータベースの永続化
+      - ./data:/app/data
+      # ログの永続化（オプション）
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/').then(() => process.exit(0)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - babanuki-network
+
+networks:
+  babanuki-network:
+    driver: bridge
+
+volumes:
+  data:
+  logs:

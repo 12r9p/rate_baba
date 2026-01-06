@@ -39,6 +39,54 @@ bun run dev
 
 サーバーが起動したら、ブラウザで `http://localhost:3000` にアクセスしてください。
 
+## 🐳 デプロイ（Docker / Coolify）
+
+### Docker Composeでデプロイ
+
+```bash
+# イメージをビルド
+docker-compose build
+
+# コンテナを起動
+docker-compose up -d
+
+# ログを確認
+docker-compose logs -f
+
+# 停止
+docker-compose down
+```
+
+### Coolifyでのデプロイ
+
+1. **リポジトリを接続**
+   - GitHub/GitLabリポジトリをCoolifyに接続
+
+2. **ビルド設定**
+   - Build Pack: **Docker Compose**
+   - Port: **3000**
+
+3. **環境変数（オプション）**
+   ```
+   NODE_ENV=production
+   PORT=3000
+   ```
+
+4. **ボリューム設定（重要！）**
+   - SQLiteデータベースの永続化のため、以下のボリュームを設定：
+   ```
+   ./data:/app/data
+   ```
+
+5. **デプロイ**
+   - 「Deploy」ボタンをクリックして開始
+
+### 注意事項
+
+- **データベースの永続化**: `./data`ディレクトリをボリュームマウントすることで、コンテナを再起動してもデータが保持されます
+- **WebSocket対応**: Socket.IOが正しく動作するよう、プロキシ設定でWebSocketを有効にしてください
+- **ポート**: デフォルトは3000ですが、環境変数`PORT`で変更可能です
+
 ## 🎯 使い方
 
 ### ゲームを始める
