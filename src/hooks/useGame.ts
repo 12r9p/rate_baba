@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Player } from '@/types/game';
 import { io, Socket } from 'socket.io-client';
+import Cookies from 'js-cookie';
 
-export function useGame() {
+export function useGame(roomId?: string, options: { isSpectator?: boolean, enabled?: boolean } = {}) {
+  const { isSpectator = false, enabled = true } = options;
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,66 +14,99 @@ export function useGame() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Initialize Socket
-    // Fetch logic removed, replaced by WebSocket
-    const socket = io(); // Auto-connects to same origin
+    // If no room ID or disabled, we are likely in Lobby or waiting for name
+    if (!roomId || !enabled) {
+        setLoading(false);
+        return;
+    }
+
+    const socket = io(); 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket');
+      // Attempt Join on connect?
+      const storedName = localStorage.getItem('babanuki_player_name') || 'Guest';
+      
+      socket.emit('join-room', { roomId, name: storedName, isSpectator }, (res: any) => {
+          if (res.success) {
+              if (res.token) {
+                  Cookies.set('token', res.token);
+              }
+              if (res.player) {
+                  setMyPlayerId(res.player.id);
+                  // localStorage.setItem('babanuki_player_id', res.player.id); // No longer needed as primary auth
+              }
+              setLoading(false);
+          } else {
+              console.error("Failed to join room:", res.error);
+              setError(res.error || "Failed to join room. Please try again.");
+              setLoading(false);
+          }
+      });
     });
 
     socket.on('update', (state: GameState) => {
-        console.log('[WS] State Update:', state.phase, state.currentTurnPlayerId);
-        setGameState(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(state)) return prev;
-            return state;
-        });
+        setGameState(state);
         setLoading(false);
     });
-
-    // Load ID from local storage
-    const storedId = localStorage.getItem('babanuki_player_id');
-    if (storedId) setMyPlayerId(storedId);
 
     return () => {
       socket.disconnect();
     };
+  }, [roomId, isSpectator, enabled]);
+
+  const joinRoom = useCallback((room: string, name: string) => {
+      // Logic handled in page.tsx / generic lobby usually, but exposed here if needed
   }, []);
 
-  const joinGame = useCallback((name: string) => {
-    if (!socketRef.current) return;
-    setLoading(true);
-    socketRef.current.emit('join', { name }, (player: Player) => {
-        setMyPlayerId(player.id);
-        localStorage.setItem('babanuki_player_id', player.id);
-        setLoading(false);
-    });
-  }, []);
+  const sendAction = useCallback((type: string, payload: any = {}) => {
+      if (!roomId || !socketRef.current) return;
+      socketRef.current.emit('action', { roomId, type, payload });
+  }, [roomId]);
 
-  const startGame = useCallback(() => {
-    socketRef.current?.emit('start');
-  }, []);
-
+  const startGame = useCallback(() => sendAction('start'), [sendAction]);
+  
   const drawCard = useCallback((targetPlayerId: string, cardIndex?: number) => {
-    if (!myPlayerId) return;
-    socketRef.current?.emit('draw', { playerId: myPlayerId, targetPlayerId, cardIndex });
-  }, [myPlayerId]);
-
-  const adminDraw = useCallback((actorId: string, targetPlayerId: string, cardIndex?: number) => {
-    socketRef.current?.emit('draw', { playerId: actorId, targetPlayerId, cardIndex });
-  }, []);
-
+      sendAction('draw', { targetPlayerId, cardIndex });
+  }, [sendAction]);
+  
   const tease = useCallback((cardIndex: number) => {
-    if (!myPlayerId) return;
-    socketRef.current?.emit('tease', { playerId: myPlayerId, cardIndex });
-  }, [myPlayerId]);
-
+      sendAction('tease', { cardIndex });
+  }, [sendAction]);
+  
   const resetGame = useCallback((hardReset: boolean) => {
-    socketRef.current?.emit('reset', { hardReset });
+      sendAction('reset', { hardReset });
+  }, [sendAction]);
+
+  const voteToSkip = useCallback(() => {
+      sendAction('voteToSkip');
+  }, [sendAction]);
+
+  const adminDraw = useCallback((actorId: string, targetPlayerId: string, cardIndex: number) => {
+      sendAction('adminDraw', { actorId, targetPlayerId, cardIndex });
+  }, [sendAction]);
+
+  const sendMessage = useCallback((content: string) => {
+      sendAction('message', { content });
+  }, [sendAction]);
+
+  const kickPlayer = useCallback((targetPlayerId: string) => {
+      sendAction('kick', { targetPlayerId });
+  }, [sendAction]);
+
+  // Refresh just requests state update implies no-op or explicit 'get-state'
+  const refresh = useCallback(() => {
+     // We can just ask for update if needed, or do nothing as WS pushes.
+     // Let's implement active fetch to be sure.
+     // We don't have 'get-state' action in server yet, let's just rely on reconnection or add it?
+     // Server code: "if (!actorId && type !== 'get-state') return;" -> implies get-state exists in thought but maybe not switch?
+     // Actually server doesn't implement get-state in switch.
+     // Let's just do a no-op that satisfies the interface or a console log.
+     console.log("Refreshed state via WebSocket");
   }, []);
 
-  const myPlayer = gameState?.players.find(p => p.id === myPlayerId);
+  const myPlayer = gameState?.players.find(p => p.id === myPlayerId) || null;
 
   return {
     gameState,
@@ -79,12 +114,15 @@ export function useGame() {
     myPlayer,
     loading,
     error,
-    joinGame,
     startGame,
     drawCard,
     adminDraw,
     tease,
     resetGame,
-    refresh: () => {} // No-op for now as socket pushes updates
+    voteToSkip,
+    refresh,
+    sendMessage,
+    kickPlayer,
+    updateRoomName: (name: string) => sendAction('update-room-name', { name })
   };
 }

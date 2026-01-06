@@ -2,34 +2,74 @@
 
 import { useGame } from "@/hooks/useGame";
 import { useState } from "react";
-import { OpponentArea } from "@/components/OpponentArea";
 import { DiscardAnimation } from "@/components/DiscardAnimation";
-import { clsx } from "clsx";
+import { Player } from "@/types/game";
 
 export default function AdminPage() {
-    const { gameState, startGame, resetGame, refresh, adminDraw } = useGame();
-    const [loading, setLoading] = useState(false);
+    // Admin needs to connect to a specific room to control it.
+    const [roomId, setRoomId] = useState("");
+    const [connected, setConnected] = useState(false);
 
-    if (!gameState) return <div className="p-8">Loading Game State...</div>;
+    // Use useGame with selected roomId
+    // If not connected, pass undefined to avoid connection hook auto-starting?
+    // Actually useGame hook connects if roomId is present.
+    const shouldConnect = connected && roomId !== "";
+    const { gameState, startGame, resetGame, refresh, adminDraw, loading: gameLoading } = useGame(shouldConnect ? roomId : undefined, { isSpectator: true });
+
+    const [actionLoading, setActionLoading] = useState(false);
 
     const handleAction = (action: () => void) => {
-        setLoading(true);
+        setActionLoading(true);
         action();
-        // Socket updates are async, but emit is sync. 
-        // We add a small delay to prevent button spam/flicker
-        setTimeout(() => setLoading(false), 500);
+        setTimeout(() => setActionLoading(false), 500);
     };
+
+    if (!connected) {
+        return (
+            <div className="h-screen flex items-center justify-center bg-slate-100">
+                <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+                    <h1 className="text-2xl font-bold mb-4">Admin Console</h1>
+                    <input
+                        className="w-full px-4 py-2 border rounded mb-4"
+                        placeholder="Enter Room ID to Manage"
+                        value={roomId}
+                        onChange={e => setRoomId(e.target.value)}
+                    />
+                    <button
+                        onClick={() => setConnected(true)}
+                        className="w-full bg-slate-800 text-white py-2 rounded font-bold"
+                        disabled={!roomId}
+                    >
+                        Connect
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (gameLoading || !gameState) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-slate-100">
+                <div className="animate-spin text-4xl mb-4">⏳</div>
+                <p>Connecting to {roomId}...</p>
+                <button onClick={() => setConnected(false)} className="mt-4 text-blue-500 underline">Cancel</button>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen overflow-y-auto bg-slate-50 text-slate-800 p-8 font-sans">
             <div className="max-w-6xl mx-auto">
                 <header className="flex justify-between items-center mb-12">
-                    <h1 className="text-3xl font-bold text-slate-900 border-l-8 border-yellow-500 pl-4">Admin Console</h1>
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 border-l-8 border-yellow-500 pl-4">Admin Console</h1>
+                        <p className="text-slate-400 text-sm ml-6">Room: {roomId}</p>
+                    </div>
                     <div className="flex gap-4 items-center">
                         <div className="text-sm text-slate-500">
                             State: <span className="font-mono bg-slate-200 px-2 py-1 rounded text-slate-800">{gameState.phase}</span>
                         </div>
-                        <button onClick={() => refresh()} className="text-sm text-blue-600 hover:underline">Refresh</button>
+                        <button onClick={() => setConnected(false)} className="text-sm text-red-600 hover:underline">Disconnect</button>
                     </div>
                 </header>
 
@@ -43,8 +83,8 @@ export default function AdminPage() {
                             <div className="space-y-3">
                                 {gameState.phase === 'LOBBY' && (
                                     <button
-                                        onClick={() => handleAction(startGame)}
-                                        disabled={loading || gameState.players.length < 2}
+                                        onClick={() => handleAction(() => startGame && startGame())}
+                                        disabled={actionLoading || gameState.players.length < 2}
                                         className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-500/20"
                                     >
                                         START GAME
@@ -53,8 +93,8 @@ export default function AdminPage() {
 
                                 {gameState.phase === 'FINISHED' && (
                                     <button
-                                        onClick={() => handleAction(() => resetGame(false))}
-                                        disabled={loading}
+                                        onClick={() => handleAction(() => resetGame && resetGame(false))}
+                                        disabled={actionLoading}
                                         className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20"
                                     >
                                         NEXT ROUND (Keep Rates)
@@ -65,23 +105,19 @@ export default function AdminPage() {
                                     <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
                                         <div className="text-xs font-bold text-yellow-800 uppercase mb-2">Current Turn</div>
                                         <div className="text-lg font-medium text-yellow-900 mb-4">
-                                            {gameState.players.find(p => p.id === gameState.currentTurnPlayerId)?.name || "Unknown"}
+                                            {gameState.players.find((p: Player) => p.id === gameState.currentTurnPlayerId)?.name || "Unknown"}
                                         </div>
                                         <button
                                             onClick={async () => {
                                                 // Force Play Logic
-                                                const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurnPlayerId);
+                                                const currentPlayer = gameState.players.find((p: Player) => p.id === gameState.currentTurnPlayerId);
                                                 if (!currentPlayer) return;
 
-                                                // Identify target (logic matches GameManager.updateTarget somewhat, or just pick any valid neighbor)
-                                                // For "Random Move", picking ANY valid target is fine for debug.
-                                                // But let's try to follow rule: Next Active Player.
-
                                                 const targetId = gameState.targetPlayerId;
-                                                const targetPlayer = gameState.players.find(p => p.id === targetId);
+                                                const targetPlayer = gameState.players.find((p: Player) => p.id === targetId);
 
                                                 if (!targetPlayer || targetPlayer.hand.length === 0) {
-                                                    alert("No valid target found.");
+                                                    console.error("No valid target found.");
                                                     return;
                                                 }
 
@@ -89,7 +125,7 @@ export default function AdminPage() {
                                                 const randIdx = Math.floor(Math.random() * targetPlayer.hand.length);
 
                                                 handleAction(() => {
-                                                    adminDraw(currentPlayer.id, targetPlayer.id, randIdx);
+                                                    if (adminDraw) adminDraw(currentPlayer.id, targetPlayer.id, randIdx);
                                                 });
                                             }}
                                             className="w-full py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
@@ -107,13 +143,12 @@ export default function AdminPage() {
                             </h2>
                             <button
                                 onClick={() => {
-                                    if (confirm("Reset EVERYTHING? Rates will be lost.")) {
-                                        resetGame(true);
-                                    }
+                                    // Removed confirm popup as requested.
+                                    if (resetGame) resetGame(true);
                                 }}
                                 className="w-full py-2 border-2 border-red-600 text-red-600 rounded-lg font-bold hover:bg-red-50"
                             >
-                                System Reset
+                                System Reset (No Confirm)
                             </button>
                         </section>
                     </div>
@@ -132,7 +167,7 @@ export default function AdminPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {gameState.players.map(p => (
+                                    {gameState.players.map((p: Player) => (
                                         <tr key={p.id} className="hover:bg-slate-50">
                                             <td className="p-4 font-medium">{p.name}</td>
                                             <td className="p-4 font-mono font-bold text-right text-indigo-600">{p.rate}</td>

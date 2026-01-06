@@ -1,34 +1,60 @@
-export type Suit = 'spade' | 'heart' | 'diamond' | 'club' | 'joker';
+export type Suit = 'spade' | 'heart' | 'diamond' | 'club' | 'joker' | 'back';
 
-export type Card = {
+export interface Card {
   id: string;
   suit: Suit;
-  number: number; // 0 for Joker, 1-13 for others
-  isHighlighted?: boolean; // For tease feature
-};
+  number: number;
+  isHighlighted?: boolean;
+}
 
-export type Player = {
+export interface Player {
   id: string;
   name: string;
   hand: Card[];
-  rank: number | null; // 1st, 2nd, etc. 
-  previousRank: number | null; // For calculating rate change
+  rank: number | null;
+  previousRank: number | null;
   rate: number;
-  rateHistory: number[]; // To show graph or list of changes
+  rateHistory: number[];
   isBot: boolean;
-  finishedAt: number | null; // Timestamp or order index when they finished
-};
+  finishedAt: number | null;
+}
 
-export type GamePhase = 'LOBBY' | 'DEALING' | 'PLAYING' | 'FINISHED';
+export interface GameResult {
+    round: number;
+    date: string;
+    standings: {
+        name: string;
+        rank: number;
+        rate: number;
+        diff: number;
+    }[];
+}
 
-export type GameState = {
+export interface ChatMessage {
+    id: string;
+    senderId: string;
+    senderName: string;
+    content: string;
+    timestamp: number;
+    isSystem: boolean;
+}
+
+export interface GameState {
   id: string;
-  phase: GamePhase;
+  phase: 'LOBBY' | 'PLAYING' | 'FINISHED';
+  roomName?: string;
+  ownerId: string;
   players: Player[];
-  currentTurnPlayerId: string | null;
+  currentTurnPlayerId: string;
   deck: Card[];
-  winners: string[];
-  roundCount: number; // How many games played
-  lastDiscard: { playerId: string; cards: Card[] } | null;
-  targetPlayerId: string | null; // The player who is currently being targeted (drawn from)
-};
+  winners: Player[];
+  roundCount: number;
+  lastDiscard: {
+    playerId: string;
+    cards: Card[];
+  } | null;
+  targetPlayerId: string | null;
+  votes: string[]; // List of IDs who voted to skip
+  history: GameResult[]; // Past game results
+  messages: ChatMessage[];
+}

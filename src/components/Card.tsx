@@ -38,7 +38,8 @@ export function Card({
         heart: '♥',
         diamond: '♦',
         club: '♣',
-        joker: '★'
+        joker: '★',
+        back: ''
     }[suit || 'spade'];
 
     const displayNum = number === 0 ? '' :
@@ -102,25 +103,29 @@ export function Card({
                 </div>
             </div>
 
-            {/* BACK - Rich Design */}
+            {/* BACK - Light & Shadow Design */}
             <div
                 className={clsx(
                     "absolute inset-0 backface-hidden rotate-y-180 rounded-[16px] overflow-hidden",
-                    "shadow-xl border-4 border-white" // White border for classic look
+                    "shadow-xl border border-slate-200"
                 )}
                 style={{
-                    backgroundColor: '#1e3a8a', // Deep Indigo
-                    backgroundImage: `
-                        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%),
-                        repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px),
-                        repeating-linear-gradient(-45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px)
-                    `
+                    background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)',
                 }}
             >
+                {/* Geometric / Light patterns */}
+                <div className="absolute inset-0 opacity-30"
+                    style={{
+                        backgroundImage: `
+                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px)
+                        `
+                    }}
+                />
+
+                {/* Central Motif - Glowing Orb/Symbol */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    {/* Center Emblem */}
-                    <div className="w-16 h-24 border-2 border-white/30 rounded-lg flex items-center justify-center bg-white/10 backdrop-blur-sm">
-                        <div className="text-white/80 font-serif font-bold tracking-widest text-lg"></div>
+                    <div className="w-16 h-24 border border-white/20 rounded-lg flex items-center justify-center bg-white/5 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                        <div className="w-8 h-12 border border-white/10 rounded-sm" />
                     </div>
                 </div>
             </div>

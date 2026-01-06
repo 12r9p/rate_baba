@@ -67,7 +67,7 @@ export const OpponentArea = memo(function OpponentArea({
                         "relative h-20 w-32 transition-all",
                         // Using 'canDraw' to control interactivity and distinct cursor
                         // Add strong drop-shadow glow to the CARDS area when active
-                        canDraw ? "cursor-pointer drop-shadow-[0_0_20px_rgba(255,255,200,0.6)]" : "opacity-90"
+                        canDraw ? "cursor-pointer drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" : "opacity-90"
                     )}
                     // Clicking the area selects/focuses the player (optional focus highlight)
                     onClick={() => canDraw && onSelect()}
@@ -88,7 +88,7 @@ export const OpponentArea = memo(function OpponentArea({
                         // Allow wider spread for God Mode (35px) to reduce overlap
                         // Play Mode: 40px when active, 30px when compact (was 12px, too crowded)
                         // Center Mode (canDraw): 60px
-                        const maxSpread = showFaceUp ? 35 : (isActive ? (canDraw ? 60 : 40) : 30);
+                        const maxSpread = showFaceUp ? 35 : (isActive ? (canDraw ? 45 : 40) : 30); // Reduced canDraw spread from 60 to 45
 
                         const calculatedSpread = availableWidth / Math.max(1, total - 1);
                         const spread = Math.min(maxSpread, calculatedSpread);
@@ -114,7 +114,7 @@ export const OpponentArea = memo(function OpponentArea({
                                     x: xOffset,
                                     y: isTeasing ? (canDraw ? -20 : 10) : yOffset,
                                     rotate: isTeasing ? 0 : rot,
-                                    scale: canDraw ? 1.3 : 1, // Larger cards in center
+                                    scale: canDraw ? 1.05 : 1, // Reduced scale from 1.3 to 1.05
                                     zIndex: cIdx
                                 }}
                                 style={{
