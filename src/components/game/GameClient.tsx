@@ -15,6 +15,7 @@ import { OpponentList } from "@/components/game/OpponentList";
 import { ActiveDrawingStage } from "@/components/game/ActiveDrawingStage";
 import { GameOverlay } from "@/components/game/GameOverlay";
 import { GameEffects } from "@/components/game/GameEffects";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface GameClientProps {
     roomId: string;
@@ -29,6 +30,17 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
     const [showQRCode, setShowQRCode] = useState(false);
     const [playedIntro, setPlayedIntro] = useState(false);
     const processedTurnId = useRef<string | null>(null);
+
+    // Turn Timer State (Client-side approximation)
+    const [timerProgress, setTimerProgress] = useState<number>(100);
+
+    // Confirm Dialog State
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    } | null>(null);
 
     // Helpers
     const isMyTurn = gameState?.currentTurnPlayerId === myPlayerId;
@@ -70,6 +82,28 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
         }
     }, [gameState?.roundCount]);
 
+    // Turn Timer Countdown Logic (30 seconds)
+    useEffect(() => {
+        if (gameState?.phase === 'PLAYING' && gameState?.currentTurnPlayerId) {
+            // Reset timer on turn change
+            const startTime = Date.now();
+            setTimerProgress(100);
+
+            const interval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000; // seconds
+                const remaining = Math.max(0, 30 - elapsed);
+                const progress = (remaining / 30) * 100;
+                setTimerProgress(progress);
+
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                }
+            }, 500); // Update every 500ms for better performance
+
+            return () => clearInterval(interval);
+        }
+    }, [gameState?.phase, gameState?.currentTurnPlayerId]);
+
     // Auto-focus logic
     useEffect(() => {
         if (!isSpectator && gameState?.phase === 'PLAYING' && isMyTurn && !focusTargetId) {
@@ -95,8 +129,12 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
     // Auto-redirect if kicked (player no longer in list and not spectator)
     useEffect(() => {
         if (!loading && gameState && myPlayerId && !gameState.players.find(p => p.id === myPlayerId) && !isSpectator) {
-            alert("You have been kicked from the room.");
-            window.location.href = "/";
+            setConfirmDialog({
+                isOpen: true,
+                title: "退出されました",
+                message: "ルームから退出させられました。",
+                onConfirm: () => window.location.href = "/"
+            });
         }
     }, [gameState?.players, myPlayerId, loading, isSpectator]);
 
@@ -129,20 +167,16 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
             <div className="absolute top-4 left-4 z-30 flex gap-2">
                 <button
                     onClick={() => {
-                        // eslint-disable-next-line no-restricted-globals
-                        if (confirm("Are you sure you want to leave the room?")) {
-                            window.location.href = "/";
-                        }
+                        setConfirmDialog({
+                            isOpen: true,
+                            title: "退室確認",
+                            message: "本当にルームから退室しますか？",
+                            onConfirm: () => window.location.href = "/"
+                        });
                     }}
                     className="h-10 px-4 rounded-full bg-white/50 backdrop-blur border border-slate-200 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors font-bold text-xs shadow-sm"
                 >
                     EXIT
-                </button>
-                <button
-                    onClick={() => setShowQRCode(true)}
-                    className="w-10 h-10 rounded-full bg-white/50 backdrop-blur border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-white transition-colors shadow-sm"
-                >
-                    📱
                 </button>
             </div>
 
@@ -153,6 +187,7 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
                 isMyTurn={isMyTurn && !isSpectator}
                 setFocusTargetId={setFocusTargetId}
                 setDetailPlayer={setDetailPlayer}
+                timerProgress={timerProgress}
             />
 
             <ActiveDrawingStage
@@ -204,6 +239,23 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Confirm Dialog */}
+            {confirmDialog && (
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmText="OK"
+                    cancelText="キャンセル"
+                    onConfirm={() => {
+                        confirmDialog.onConfirm();
+                        setConfirmDialog(null);
+                    }}
+                    onCancel={() => setConfirmDialog(null)}
+                    variant="danger"
+                />
+            )}
         </main>
     );
 }

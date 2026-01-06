@@ -10,16 +10,13 @@ export class GameManager {
     private state: GameState;
     roomId: string;
     io: Server;
-    roomName: string;
 
-    constructor(roomId: string, io: Server, roomName: string = "") {
+    constructor(roomId: string, io: Server) {
         this.roomId = roomId;
         this.io = io;
-        this.roomName = roomName;
         this.state = {
             id: roomId,
             phase: 'LOBBY',
-            roomName,
             ownerId: '',
             players: [],
             currentTurnPlayerId: '',
@@ -38,7 +35,6 @@ export class GameManager {
     getSummary() {
         return {
             id: this.state.id,
-            name: this.roomName,
             playerCount: this.state.players.length,
             phase: this.state.phase,
             round: this.state.roundCount
@@ -215,11 +211,7 @@ export class GameManager {
         }
     }
 
-    updateRoomName(name: string) {
-        if (!name || name.length > 20) return;
-        this.roomName = name;
-        this.state.roomName = name;
-    }
+
 
     start() {
         if (this.state.players.length < 2) return;
@@ -297,6 +289,13 @@ export class GameManager {
 
     forceRandomDraw() {
         if (!this.state.currentTurnPlayerId || !this.state.targetPlayerId) return;
+        
+        // Don't force draw for CPU players
+        const currentPlayer = this.state.players.find(p => p.id === this.state.currentTurnPlayerId);
+        if (currentPlayer?.isBot) {
+            console.log("Skipping force draw for CPU player");
+            return;
+        }
         
         // Perform draw with ANY card index
         console.log("Force Random Draw Executed");

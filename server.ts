@@ -25,12 +25,7 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  const io = new Server(httpServer, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
-    }
-  });
+  const io = new Server(httpServer);
 
   io.on("connection", (socket) => {
     // console.log("New connection:", socket.id);
@@ -156,9 +151,6 @@ app.prepare().then(() => {
                 break;
             case 'kick':
                 gm.kick(actorId!, payload.targetPlayerId);
-                break;
-            case 'update-room-name':
-                gm.updateRoomName(payload.name);
                 break;
             case 'shuffleHand':
                 gm.shuffleHand(actorId!);

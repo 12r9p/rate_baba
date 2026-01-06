@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlayerHUD } from "@/components/PlayerHUD";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
 import { HistoryModal } from "../HistoryModal";
 import { Player, GameState } from "@/types/game";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface GameOverlayProps {
     gameState: GameState;
@@ -26,6 +28,13 @@ export function GameOverlay({
     detailPlayer, setDetailPlayer,
     voteToSkip, shuffleHand, resetGame, stablePlayers
 }: GameOverlayProps) {
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    } | null>(null);
+
 
     return (
         <>
@@ -112,8 +121,14 @@ export function GameOverlay({
                                         <div className="font-mono text-yellow-300 font-bold">
                                             {p.rate}
                                             <span className="text-xs text-white/50 ml-2">
-                                                ({p.rate - (p.rateHistory[p.rateHistory.length - 2] || 100) > 0 ? '+' : ''}
-                                                {p.rate - (p.rateHistory[p.rateHistory.length - 2] || 100)})
+                                                {(() => {
+                                                    // Get previous rate (before this game)
+                                                    const prevRate = p.rateHistory.length >= 2
+                                                        ? p.rateHistory[p.rateHistory.length - 2]
+                                                        : 100;
+                                                    const change = p.rate - prevRate;
+                                                    return `(${change > 0 ? '+' : ''}${change})`;
+                                                })()}
                                             </span>
                                         </div>
                                     </motion.div>
@@ -122,9 +137,12 @@ export function GameOverlay({
                         <div className="flex gap-4 mt-12">
                             <button
                                 onClick={() => {
-                                    if (confirm("Return to Lobby? (This will reset the game for everyone)")) {
-                                        resetGame(true);
-                                    }
+                                    setConfirmDialog({
+                                        isOpen: true,
+                                        title: "ロビーに戻る",
+                                        message: "ロビーに戻りますか？（全員のゲームがリセットされます）",
+                                        onConfirm: () => resetGame(true)
+                                    });
                                 }}
                                 className="px-8 py-3 bg-transparent border-2 border-red-500 text-red-400 rounded-full font-bold hover:bg-red-500/10 hover:text-red-300 transition-colors"
                             >
@@ -140,6 +158,23 @@ export function GameOverlay({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Confirm Dialog */}
+            {confirmDialog && (
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmText="実行"
+                    cancelText="キャンセル"
+                    onConfirm={() => {
+                        confirmDialog.onConfirm();
+                        setConfirmDialog(null);
+                    }}
+                    onCancel={() => setConfirmDialog(null)}
+                    variant="danger"
+                />
+            )}
         </>
     );
 }

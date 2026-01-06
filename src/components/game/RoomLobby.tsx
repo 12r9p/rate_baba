@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatBox } from "../ChatBox";
 import { QRCodeModal } from "../QRCodeModal";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface RoomLobbyProps {
     roomId: string;
@@ -21,26 +22,25 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
         }
     }, []);
 
-    const { gameState, loading, myPlayer, myPlayerId, startGame, sendMessage, kickPlayer, updateRoomName, addBot } = useGame(roomId, { enabled: hasName });
+    const { gameState, loading, myPlayer, myPlayerId, startGame, sendMessage, kickPlayer, addBot } = useGame(roomId, { enabled: hasName });
     const [showQRCode, setShowQRCode] = useState(false);
 
     // CPU Name State
     const [botName, setBotName] = useState("");
+
+    // Confirm Dialog State
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+    } | null>(null);
 
     const handleAddBot = () => {
         addBot(botName);
         setBotName("");
     };
 
-    // Local state for Room Name to support IME
-    const [localRoomName, setLocalRoomName] = useState("");
-    const [isEditingName, setIsEditingName] = useState(false);
 
-    useEffect(() => {
-        if (!isEditingName && gameState?.roomName) {
-            setLocalRoomName(gameState.roomName);
-        }
-    }, [gameState?.roomName, isEditingName]);
 
 
     useEffect(() => {
@@ -52,8 +52,11 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
     // Auto-redirect if kicked
     useEffect(() => {
         if (!loading && gameState && myPlayerId && !gameState.players.find(p => p.id === myPlayerId)) {
-            alert("You have been kicked from the room.");
-            window.location.href = "/";
+            setConfirmDialog({
+                isOpen: true,
+                title: "退出されました",
+                message: "ルームから退出させられました。"
+            });
         }
     }, [gameState?.players, myPlayerId, loading]);
 
@@ -147,28 +150,6 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
                         ROOM ID: <span className="text-slate-800 font-mono text-base">{roomId}</span>
                     </div>
 
-                    {/* Editable Room Name */}
-                    <div className="mb-2 flex justify-center">
-                        <input
-                            type="text"
-                            value={localRoomName}
-                            onFocus={() => setIsEditingName(true)}
-                            onBlur={() => {
-                                setIsEditingName(false);
-                                if (localRoomName !== gameState?.roomName) {
-                                    updateRoomName(localRoomName);
-                                }
-                            }}
-                            onChange={(e) => setLocalRoomName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                }
-                            }}
-                            className="text-3xl font-black text-center text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-slate-800 focus:outline-none transition-colors w-full max-w-[300px]"
-                            placeholder="Set Room Name"
-                        />
-                    </div>
                     <p className="text-slate-500 mb-8 font-medium">Lobby - Waiting for players...</p>
 
                     <div className="space-y-3 mb-8">
@@ -244,7 +225,7 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
                             <button
                                 onClick={() => {
                                     navigator.clipboard.writeText(shareUrl);
-                                    alert("Link copied to clipboard!");
+                                    // Browser provides native clipboard feedback
                                 }}
                                 className="flex-1 bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-xs border border-slate-200 transition-colors shadow-sm"
                             >
@@ -269,6 +250,22 @@ export function RoomLobby({ roomId }: RoomLobbyProps) {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Confirm Dialog */}
+            {confirmDialog && (
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmText="OK"
+                    cancelText=""
+                    onConfirm={() => {
+                        window.location.href = "/";
+                        setConfirmDialog(null);
+                    }}
+                    onCancel={() => setConfirmDialog(null)}
+                />
+            )}
         </div>
     );
 }

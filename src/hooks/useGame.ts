@@ -67,9 +67,31 @@ export function useGame(roomId?: string, options: { isSpectator?: boolean, enabl
 
   const startGame = useCallback(() => sendAction('start'), [sendAction]);
   
-  const drawCard = useCallback((targetPlayerId: string, cardIndex?: number) => {
+  const drawCard = useCallback((targetPlayerId: string, cardIndex: number) => {
+      // Optimistic Update
+      setGameState(prev => {
+          if (!prev || !myPlayerId) return prev;
+          const newState = structuredClone(prev);
+          
+          const target = newState.players.find((p: Player) => p.id === targetPlayerId);
+          const me = newState.players.find((p: Player) => p.id === myPlayerId);
+
+          if (target && me && target.hand.length > cardIndex) {
+              // Remove from target
+              target.hand.splice(cardIndex, 1);
+              
+              // Add temp card to me - use 'back' suit to show as card back
+              me.hand.push({
+                  id: `temp-${Date.now()}`,
+                  suit: 'back', // Card back - won't show face
+                  number: 0
+              });
+          }
+          return newState;
+      });
+
       sendAction('draw', { targetPlayerId, cardIndex });
-  }, [sendAction]);
+  }, [sendAction, myPlayerId]);
   
   const tease = useCallback((cardIndex: number) => {
       sendAction('tease', { cardIndex });
@@ -123,7 +145,6 @@ export function useGame(roomId?: string, options: { isSpectator?: boolean, enabl
     refresh,
     sendMessage,
     kickPlayer,
-    updateRoomName: (name: string) => sendAction('update-room-name', { name }),
     shuffleHand: () => sendAction('shuffleHand'),
     addBot: (name: string) => sendAction('add-bot', { name })
   };

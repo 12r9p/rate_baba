@@ -42,7 +42,7 @@ export interface ChatMessage {
 export interface GameState {
   id: string;
   phase: 'LOBBY' | 'PLAYING' | 'FINISHED';
-  roomName?: string;
+
   ownerId: string;
   players: Player[];
   currentTurnPlayerId: string;

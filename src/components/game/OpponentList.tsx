@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import { OpponentArea } from "@/components/OpponentArea";
 import { Player } from "@/types/game";
@@ -13,10 +13,11 @@ interface OpponentListProps {
     isMyTurn: boolean;
     setFocusTargetId: (id: string) => void;
     setDetailPlayer: (player: Player) => void;
+    timerProgress: number;
 }
 
-export function OpponentList({
-    others, currentTurnPlayerId, targetPlayerId, isMyTurn, setFocusTargetId, setDetailPlayer
+export const OpponentList = memo(function OpponentList({
+    others, currentTurnPlayerId, targetPlayerId, isMyTurn, setFocusTargetId, setDetailPlayer, timerProgress
 }: OpponentListProps) {
     const opponentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -78,6 +79,7 @@ export function OpponentList({
                                     onSelect={() => setFocusTargetId(p.id)}
                                     onDetail={() => setDetailPlayer(p)}
                                     onDraw={() => { }} // No draw in list
+                                    timerProgress={isTurn ? timerProgress : undefined}
                                 />
                             </motion.div>
                         </div>
@@ -86,4 +88,4 @@ export function OpponentList({
             </div>
         </div>
     );
-}
+});

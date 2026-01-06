@@ -10,9 +10,15 @@ type Props = {
     isCurrentTurn: boolean;
     cardsCount: number;
     className?: string;
+    timerProgress?: number; // 0-100, percentage of time remaining
 };
 
-export function PlayerAvatar({ name, rank, rate, isCurrentTurn, cardsCount, className }: Props) {
+export function PlayerAvatar({ name, rank, rate, isCurrentTurn, cardsCount, className, timerProgress }: Props) {
+    // Calculate circle dasharray for timer (circumference of circle with r=30)
+    const radius = 30;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = circumference * (1 - (timerProgress || 0) / 100);
+
     return (
         <motion.div
             initial={false}
@@ -30,9 +36,40 @@ export function PlayerAvatar({ name, rank, rate, isCurrentTurn, cardsCount, clas
                 </div>
             )}
 
-            {/* Avatar Circle */}
-            <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-lg shadow-inner">
-                {name.substring(0, 2).toUpperCase()}
+            {/* Avatar Circle with Timer */}
+            <div className="relative">
+                {/* Timer Circle (appears when it's player's turn) */}
+                {isCurrentTurn && timerProgress !== undefined && (
+                    <svg className="absolute -inset-2 w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                        {/* Background circle */}
+                        <circle
+                            cx="32"
+                            cy="32"
+                            r={radius}
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="3"
+                        />
+                        {/* Progress circle */}
+                        <circle
+                            cx="32"
+                            cy="32"
+                            r={radius}
+                            fill="none"
+                            stroke={timerProgress > 30 ? "#3b82f6" : "#ef4444"}
+                            strokeWidth="3"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={dashOffset}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000 ease-linear"
+                        />
+                    </svg>
+                )}
+
+                {/* Avatar Circle */}
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-lg shadow-inner relative z-10">
+                    {name.substring(0, 2).toUpperCase()}
+                </div>
             </div>
 
             <div className="text-center">

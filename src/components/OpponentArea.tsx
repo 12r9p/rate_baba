@@ -19,10 +19,11 @@ interface OpponentAreaProps {
     onDetail: () => void;
     onDraw: (index: number) => void;
     showFaceUp?: boolean;
+    timerProgress?: number;
 }
 
 export const OpponentArea = memo(function OpponentArea({
-    player, isTurn, canDraw, isFocused, onSelect, onDetail, onDraw, showFaceUp = false
+    player, isTurn, canDraw, isFocused, onSelect, onDetail, onDraw, showFaceUp = false, timerProgress
 }: OpponentAreaProps) {
     // Add window width tracking for responsive spread
     const [windowWidth, setWindowWidth] = useState(1200);
@@ -57,6 +58,7 @@ export const OpponentArea = memo(function OpponentArea({
                     rank={player.rank}
                     cardsCount={player.hand.length}
                     isCurrentTurn={isTurn}
+                    timerProgress={timerProgress}
                 />
             </div>
 
@@ -104,7 +106,6 @@ export const OpponentArea = memo(function OpponentArea({
                         return (
                             <motion.div
                                 key={card.id}
-                                layoutId={`card-container-${player.id}-${card.id}`} // Shared layout ID for smooth transition? Actually card ID is enough if key is stable.
                                 initial={false}
                                 className={clsx(
                                     "absolute top-0 will-change-transform flex items-center justify-center transition-colors duration-200",
