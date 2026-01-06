@@ -3,12 +3,8 @@
 import { useGame } from "@/hooks/useGame";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { PlayerAvatar } from "@/components/PlayerAvatar";
-import { Card } from "@/components/Card";
 import { PlayerHUD } from "@/components/PlayerHUD";
-import { DiscardPile } from "@/components/DiscardPile";
 import { OpponentArea } from "@/components/OpponentArea";
-import { FocusDrawOverlay } from "@/components/FocusDrawOverlay";
 import { clsx } from "clsx";
 import { Lobby } from "@/components/Lobby";
 import { MyHand } from "@/components/MyHand";
@@ -74,6 +70,20 @@ export default function Home() {
     }, [gameState?.phase, isMyTurn, stablePlayers, focusTargetId, gameState?.roundCount, gameState?.currentTurnPlayerId, gameState?.targetPlayerId]);
 
 
+    // Auto-scroll logic for turn changes
+    const opponentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    useEffect(() => {
+        if (gameState?.phase === 'PLAYING' && gameState.currentTurnPlayerId) {
+            const el = opponentRefs.current.get(gameState.currentTurnPlayerId);
+            if (el) {
+                // Smooth scroll to center
+                el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }
+    }, [gameState?.phase, gameState?.currentTurnPlayerId]);
+
+
     if (loading && !gameState) {
         return <div className="min-h-screen flex items-center justify-center text-slate-400 font-mono animate-pulse">CONNECTING...</div>;
     }
@@ -126,9 +136,9 @@ export default function Home() {
             {/* RAIL */}
             <div className="absolute top-5 left-0 w-full h-px bg-slate-200 -z-0" />
 
-            {/* OPPONENTS LAYOUT - Absolute positioning to force top placement */}
-            <div className="absolute top-4 left-0 w-full flex justify-center items-start gap-4 px-2 pointer-events-none">
-                <div className="flex gap-4 w-full max-w-7xl justify-center">
+            {/* OPPONENTS LAYOUT - Scrollable container */}
+            <div className="absolute top-4 left-0 w-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth px-8 py-20 hide-scrollbar items-start pointer-events-auto">
+                <div className="flex gap-8 min-w-max mx-auto px-16">
                     {others.map((p, idx) => {
                         const isTurn = gameState.currentTurnPlayerId === p.id;
                         // const isRightNeighbor = idx === 0; // Old logic
@@ -148,9 +158,22 @@ export default function Home() {
                         // If this is the active target, add a glow behind them
                         const showGlow = isDrawingPhase && canDraw;
 
+                        // Calculate dynamic spacing based on hand size
+                        // Base: 120px (Avatar) + Cards spread
+                        // Spread is roughly 30px per card in compact mode
+                        const dynamicMinWidth = Math.max(100, 50 + p.hand.length * 30);
+
                         // Add pointer-events-auto to children
                         return (
-                            <div key={p.id} className={clsx("pointer-events-auto relative transition-all duration-300", zIndexClass)}>
+                            <div
+                                key={p.id}
+                                ref={(el: HTMLDivElement | null) => {
+                                    if (el) opponentRefs.current.set(p.id, el);
+                                    else opponentRefs.current.delete(p.id);
+                                }}
+                                className={clsx("pointer-events-auto relative transition-all duration-300 snap-center flex justify-center", zIndexClass)}
+                                style={{ minWidth: dynamicMinWidth }}
+                            >
                                 {/* Spotlight Glow */}
                                 {showGlow && (
                                     <motion.div

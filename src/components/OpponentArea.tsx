@@ -39,8 +39,16 @@ export const OpponentArea = memo(function OpponentArea({
     }
     return (
         <motion.div
-            animate={{ scale: isTurn ? 1.05 : 1, y: isTurn ? 0 : 20 }}
-            className="relative flex flex-col items-center gap-2"
+            layout
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            animate={{
+                scale: isTurn ? 1.05 : 1,
+                y: isTurn ? (canDraw ? 0 : 0) : 20 // If canDraw (Center), no y offset needed
+            }}
+            className={clsx(
+                "flex flex-col items-center gap-2",
+                canDraw ? "fixed top-[10%] left-1/2 -translate-x-1/2 z-50" : "relative"
+            )}
         >
             <div
                 className="relative z-20 cursor-pointer transition-all duration-500 rounded-full"
@@ -77,25 +85,29 @@ export const OpponentArea = memo(function OpponentArea({
 
                         // Responsive Spread Calculation
                         // Uncapped width for God Mode to allow nice spacing
-                        const availableWidth = showFaceUp ? 800 : Math.min(600, windowWidth - 40);
+                        // Responsive Spread Calculation
+                        // Uncapped width for God Mode to allow nice spacing
+                        const availableWidth = showFaceUp ? 800 : (canDraw ? windowWidth - 100 : Math.min(600, windowWidth - 40));
                         // Allow wider spread for God Mode (35px) to reduce overlap
                         // Play Mode: 40px when active, 30px when compact (was 12px, too crowded)
-                        const maxSpread = showFaceUp ? 35 : (isActive ? 40 : 30);
+                        // Center Mode (canDraw): 60px
+                        const maxSpread = showFaceUp ? 35 : (isActive ? (canDraw ? 60 : 40) : 30);
 
                         const calculatedSpread = availableWidth / Math.max(1, total - 1);
                         const spread = Math.min(maxSpread, calculatedSpread);
 
-                        const rot = isActive ? (cIdx - center) * 1 : (cIdx - center) * 2;
+                        const rot = canDraw ? 0 : (isActive ? (cIdx - center) * 1 : (cIdx - center) * 2);
 
                         const xOffset = (cIdx - center) * spread;
                         // Move down slightly when active to invite interaction
-                        const yOffset = isActive ? 40 : 0;
+                        const yOffset = isActive ? (canDraw ? 0 : 40) : 0;
 
                         const isTeasing = card.isHighlighted;
 
                         return (
                             <motion.div
                                 key={card.id}
+                                layoutId={`card-container-${player.id}-${card.id}`} // Shared layout ID for smooth transition? Actually card ID is enough if key is stable.
                                 initial={false}
                                 className={clsx(
                                     "absolute top-0 will-change-transform flex items-center justify-center transition-colors duration-200",
@@ -103,9 +115,9 @@ export const OpponentArea = memo(function OpponentArea({
                                 )}
                                 animate={{
                                     x: xOffset,
-                                    y: isTeasing ? 10 : yOffset,
+                                    y: isTeasing ? (canDraw ? -20 : 10) : yOffset,
                                     rotate: isTeasing ? 0 : rot,
-                                    scale: canDraw ? 1.2 : 1,
+                                    scale: canDraw ? 1.3 : 1, // Larger cards in center
                                     zIndex: cIdx
                                 }}
                                 style={{

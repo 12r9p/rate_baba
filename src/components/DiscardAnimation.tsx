@@ -10,7 +10,7 @@ type Props = {
 };
 
 export function DiscardAnimation({ lastDiscard, myPlayerId }: Props) {
-    const [visibleDiscards, setVisibleDiscards] = useState<{ cards: CardType[], id: string, startY: string, startX: string }[]>([]);
+    const [visibleDiscards, setVisibleDiscards] = useState<{ cards: CardType[], id: string, isMe: boolean }[]>([]);
     const processedDiscardIds = useRef<Set<string>>(new Set());
 
     useEffect(() => {
@@ -27,17 +27,13 @@ export function DiscardAnimation({ lastDiscard, myPlayerId }: Props) {
             // Process New Discard
             processedDiscardIds.current.add(eventId);
 
-            // Determine Start Position
+            // Determine context
             const isMe = lastDiscard.playerId === myPlayerId;
-            // Me: Start from bottom center (Hand). Opponent: Start from top center.
-            const startY = isMe ? "80vh" : "15vh";
-            const startX = "50vw";
 
             const newDiscard = {
                 cards: lastDiscard.cards,
                 id: eventId,
-                startY,
-                startX
+                isMe
             };
 
             setVisibleDiscards(prev => [...prev, newDiscard]);
@@ -45,8 +41,7 @@ export function DiscardAnimation({ lastDiscard, myPlayerId }: Props) {
             // Cleanup after animation
             const timer = setTimeout(() => {
                 setVisibleDiscards(prev => prev.filter(p => p.id !== eventId));
-                // Optional: Cleanup ID from Set to allow re-discard (though unlikely for same card instance IDs)
-            }, 1500);
+            }, 2000); // 2s duration
 
             return () => clearTimeout(timer);
         }
@@ -55,35 +50,54 @@ export function DiscardAnimation({ lastDiscard, myPlayerId }: Props) {
     return (
         <AnimatePresence>
             {visibleDiscards.map((discardGroup) => (
-                <div key={discardGroup.id} className="fixed inset-0 pointer-events-none z-[60]">
-                    {discardGroup.cards.map((c, i) => (
-                        <motion.div
-                            key={`${discardGroup.id}-${c.id}`}
-                            initial={{
-                                scale: 0.5,
-                                opacity: 0,
-                                top: discardGroup.startY,
-                                left: discardGroup.startX,
-                                x: "-50%",
-                                y: "-50%"
-                            }}
-                            animate={{
-                                scale: 0.2, // Shrink as it goes to pile
-                                opacity: 0, // Fade out at end
-                                top: "60px", // Approximate Top-Left Discard Pile center (Top 4 + Size/2)
-                                left: "60px", // Approximate Top-Left Discard Pile center
-                                rotate: 360 // Spin
-                            }}
-                            transition={{
-                                duration: 1.2,
-                                ease: "easeInOut",
-                                delay: i * 0.1
-                            }}
-                            className="absolute"
-                        >
-                            <Card isFaceDown={false} suit={c.suit} number={c.number} width={140} className="shadow-2xl border-2 border-white/50" />
-                        </motion.div>
-                    ))}
+                <div key={discardGroup.id} className="fixed inset-0 pointer-events-none z-35">
+                    {discardGroup.cards.map((c, i) => {
+                        // Calculate Start Position
+                        // Default (Others): All from Top Center (15vh)
+                        let startY = "15vh";
+                        if (discardGroup.isMe) {
+                            // Me: One from Top (Opponent), One from Bottom (Hand)
+                            // i=0 -> Top, i=1 -> Bottom
+                            startY = i === 0 ? "15vh" : "85vh";
+                        }
+
+                        return (
+                            <motion.div
+                                key={`${discardGroup.id}-${c.id}`}
+                                initial={{
+                                    scale: 0.5,
+                                    opacity: 0,
+                                    top: startY,
+                                    left: "50%",
+                                    x: "-50%",
+                                    y: "-50%",
+                                    rotate: 0,
+                                }}
+                                animate={{
+                                    top: "50%",
+                                    left: "50%",
+                                    scale: [0.5, 1.1, 0.5], // Grow to show, then shrink to pile size
+                                    opacity: [0, 1, 1, 0], // Fade in, stay, fade out
+                                    rotate: [0, 180 + Math.random() * 180],
+                                    zIndex: [10, 10, 0] // Keep z-index stable until end
+                                }}
+                                transition={{
+                                    duration: 1.4, // Adjusted for better visibility
+                                    ease: "easeInOut", // Smooth curve
+                                    delay: i * 0.05 // Tiny offset for natural layering
+                                }}
+                                className="absolute"
+                            >
+                                <Card
+                                    isFaceDown={false}
+                                    suit={c.suit}
+                                    number={c.number}
+                                    width={140}
+                                    className="shadow-2xl border-white/50"
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </div>
             ))}
         </AnimatePresence>
