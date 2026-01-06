@@ -28,8 +28,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # ユーザー追加（セキュリティ向上）
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nextjs
 
 # 必要なファイルのみコピー
 COPY --from=builder /app/public ./public
