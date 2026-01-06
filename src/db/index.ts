@@ -1,7 +1,15 @@
 import { Database } from "bun:sqlite";
 import path from 'path';
+import fs from 'fs';
 
 const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'game.db');
+
+// Ensure directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(dbPath, { create: true });
 
 // Initialize Tables
