@@ -1,36 +1,189 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# レートババ抜き (Rate Babanuki)
 
-## Getting Started
+オンラインで遊べるレート制ババ抜きゲームです。ランキングシステム搭載で、友達や世界中のプレイヤーと競い合えます。
 
-First, run the development server:
+## 🎮 特徴
+
+- **リアルタイムマルチプレイ** - Socket.IOによる同期対戦
+- **レートシステム** - 勝敗に応じてレートが変動
+- **CPUプレイヤー** - 人が足りない時は自動追加
+- **ランキング機能** - トッププレイヤーを確認可能
+- **履歴管理** - 過去のゲーム履歴を保存
+- **カスタムルームID** - 友達と簡単に同じ部屋に参加
+
+## 🛠️ 技術スタック
+
+- **フロントエンド**: Next.js 15, React, TypeScript, Framer Motion, TailwindCSS
+- **バックエンド**: Next.js API Routes, Socket.IO
+- **データベース**: SQLite (Bun SQLite)
+- **ランタイム**: Bun
+- **スタイリング**: TailwindCSS
+
+## 📋 必要条件
+
+- [Bun](https://bun.sh/) v1.0以降
+
+## 🚀 セットアップ
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# リポジトリをクローン
+git clone <repository-url>
+cd レートババ抜き
+
+# 依存関係をインストール
+bun install
+
+# 開発サーバーを起動
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+サーバーが起動したら、ブラウザで `http://localhost:3000` にアクセスしてください。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🎯 使い方
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### ゲームを始める
 
-## Learn More
+1. **ホーム画面で名前を入力**
+   - 最大10文字まで入力できます
 
-To learn more about Next.js, take a look at the following resources:
+2. **ルームを作成または参加**
+   - **CREATE**: 新しいルームを作成
+     - ルームIDを指定するか、自動生成させます
+   - **JOIN**: 既存のルームに参加
+     - ルームIDを入力して参加
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **ロビーで準備**
+   - 必要に応じてCPUプレイヤーを追加
+   - 全員が揃ったら「START GAME」をクリック
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ゲームの進行
 
-## Deploy on Vercel
+1. **カードを配る**
+   - ゲーム開始時に全カードが均等に配られます
+   - 同じ数字のペアは自動的に捨てられます
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **カードを引く**
+   - 自分のターンになったら、他のプレイヤーのカードを1枚選んで引きます
+   - 引いたカードがペアになれば自動的に捨てられます
+   - 30秒以内に引かないとランダムで引かれます
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **勝敗**
+   - 手札がなくなったプレイヤーから順に上がり
+   - 最後までジョーカーを持っていた人が負け
+
+### ランキングを見る
+
+- ホーム画面の「🏆 TOP PLAYERS」ボタンをクリック
+- レート順にトップ20プレイヤーが表示されます
+
+## 📊 レートシステム
+
+### 初期レート
+- 全プレイヤーは **100** からスタート
+
+### レート変動ルール
+
+#### 1回目のゲーム
+順位に応じて固定ポイント：
+- 1位: **+4**
+- 2位: **+3**
+- 3位: **+2**
+- 4位: **+1**
+- 5位: **0**
+- 6位: **0**
+
+#### 2回目以降
+```
+基本変動 = (前回の順位 - 今回の順位) × 8
+```
+
+**同順位ボーナス**: 前回と同じ順位なら **+10**
+
+**例:**
+- 前回3位 → 今回1位: `(3-1) × 8 = +16`
+- 前回2位 → 今回4位: `(2-4) × 8 = -16`
+- 前回1位 → 今回1位: `0 + 10 = +10`
+
+### レート補正
+
+**高レート補正（レート130以上）**
+- 獲得レートが **0.8倍** になります
+- 例: +20 → +16
+
+**低レート補正（レート70以下）**
+- 獲得レートが **1.2倍** になります
+- 例: +10 → +12
+
+**最低レート**: **30**（これ以下には下がりません）
+
+## 🎲 ゲーム機能詳細
+
+### CPUプレイヤー
+- ロビーで「ADD CPU」ボタンをクリックして追加
+- CPUは自動的にカードを引きます
+- 人間プレイヤーと同じルールでプレイ
+
+### 履歴機能
+- Recent Roomsから過去のルームに再参加可能
+- 最新5件まで保存されます
+
+### カードシャッフル
+- 手札のカードをシャッフルできます（見た目のみ）
+- 他のプレイヤーには影響しません
+
+## 🔧 開発者向け
+
+### プロジェクト構成
+
+```
+src/
+├── app/                  # Next.js App Router
+│   ├── api/             # API Routes
+│   └── room/            # ゲームルームページ
+├── components/          # Reactコンポーネント
+│   └── game/           # ゲーム関連コンポーネント
+├── lib/                # ビジネスロジック
+│   ├── GameManager.ts  # ゲーム状態管理
+│   └── rating.ts       # レート計算
+├── hooks/              # カスタムフック
+├── types/              # TypeScript型定義
+└── db/                 # データベース
+```
+
+### データベーススキーマ
+
+**players**
+- `id`: プレイヤーID (UUID)
+- `name`: 名前
+- `rate`: レート
+- `matches`: 試合数
+- `wins`: 勝利数
+
+**game_results**
+- ゲーム結果の履歴
+
+**player_history**
+- プレイヤーごとのレート変動履歴
+
+### ビルド
+
+```bash
+# 本番ビルド
+bun run build
+
+# 本番サーバー起動
+bun run start
+```
+
+## 📝 ライセンス
+
+このプロジェクトは個人用です。
+
+## 👤 作者
+
+**SATO TAKUMI**
+- Website: [s-t.work](https://s-t.work)
+
+---
+
+**楽しいゲームを！🎴**
