@@ -7,6 +7,7 @@ import { GameManager } from "./src/lib/GameManager";
 import jwt from "jsonwebtoken";
 import { parse as parseCookie } from "cookie";
 import { v4 as uuidv4 } from "uuid";
+import { broadcastGameState } from "./src/lib/socketUtils";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -102,14 +103,10 @@ app.prepare().then(() => {
              // Return success with player data
              if (callback) callback({ success: true, player: p, token: newToken });
              
+             if (callback) callback({ success: true, player: p, token: newToken });
+             
              // Broadcast Personalized Updates
-             (async () => {
-                 const sockets = await io.in(roomId).fetchSockets();
-                 sockets.forEach(s => {
-                    const viewerId = (s as any).playerId || '';
-                    s.emit('update', gm!.getPersonalizedState(viewerId));
-                 });
-             })();
+             broadcastGameState(io, roomId, gm);
         }
     });
 
@@ -161,23 +158,7 @@ app.prepare().then(() => {
         }
 
         // Broadcast Personalized Updates
-        (async () => {
-            const sockets = await io.in(roomId).fetchSockets();
-            sockets.forEach(s => {
-                // Determine viewer ID for this socket
-                // We need to parse token or use saved session data, but we can't easily access socket.request.cookies here without re-parsing?
-                // Actually, we saved 'playerId' in closure scope for 'socket.on("action")', but here we are broadcasting to EVERYONE.
-                // We need the playerId associated with 's'.
-                // We can store playerId on the socket object during connection/join.
-                // In 'join-room', we did: (socket as any).currentRoomId = roomId; 
-                // We should also store (socket as any).playerId = playerId;
-                
-                // Oops, we need to ensure 's' has access to its player ID.
-                // Let's assume we attached it.
-                const viewerId = (s as any).playerId || '';
-                s.emit('update', gm.getPersonalizedState(viewerId));
-            });
-        })();
+        broadcastGameState(io, roomId, gm);
     });
 
     socket.on("disconnect", () => {
@@ -194,13 +175,7 @@ app.prepare().then(() => {
                      console.log(`Room ${rid} deleted (empty)`);
                  } else {
                      // Broadcast Personalized Updates
-                     (async () => {
-                         const sockets = await io.in(rid).fetchSockets();
-                         sockets.forEach(s => {
-                            const viewerId = (s as any).playerId || '';
-                            s.emit('update', gm!.getPersonalizedState(viewerId));
-                         });
-                     })();
+                     broadcastGameState(io, rid, gm);
                  }
              }
          }

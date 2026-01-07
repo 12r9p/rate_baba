@@ -4,7 +4,8 @@ import { calculateRateChange, applyRateChange } from './rating';
 import { discardPairs } from './gameLogic';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from 'socket.io';
-import db from '@/db';
+import { PlayerRepository } from '@/repositories/PlayerRepository';
+import { broadcastGameState } from '@/lib/socketUtils';
 
 export class GameManager {
     private state: GameState;
@@ -84,31 +85,34 @@ export class GameManager {
     }
 
 
+    // ... (rest of the file)
+    
+    // Import at the top
+    // import { PlayerRepository } from '@/repositories/PlayerRepository';
+
+    // ...
+
     join(name: string, playerId?: string): Player {
         let pId = playerId || uuidv4();
         
         // 1. Try to load from DB
-        const row = db.prepare('SELECT * FROM players WHERE id = ?').get(pId) as any;
+        const row = PlayerRepository.getPlayer(pId);
         
         let rate = 1000;
         let rateHistory: number[] = [];
 
         if (row) {
             rate = row.rate;
-            // Load history (last 10?)
-            const historyRows = db.prepare('SELECT rate_after FROM player_history WHERE player_id = ? ORDER BY id DESC LIMIT 20').all(pId) as any[];
-            rateHistory = historyRows.map(r => r.rate_after).reverse();
-            // If name changed, update it?
+            // Load history
+            rateHistory = PlayerRepository.getRecentRateHistory(pId);
+            
+            // If name changed, update it
             if (name && row.name !== name) {
-                 db.prepare('UPDATE players SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name, pId);
+                 PlayerRepository.updatePlayerName(pId, name);
             }
         } else {
             // Create new player in DB
-            try {
-                db.prepare('INSERT INTO players (id, name, rate) VALUES (?, ?, ?)').run(pId, name, 1000);
-            } catch (e) {
-                console.error("Failed to insert player", e);
-            }
+            PlayerRepository.createPlayer(pId, name);
         }
         
         // Also check if already in room memory (reconnect)
@@ -143,10 +147,6 @@ export class GameManager {
         const isFirstGame = this.state.roundCount === 0;
         const gameId = uuidv4(); // Unique ID for this specific round result
 
-        // Transaction to ensure data integrity
-        const updateStmt = db.prepare('UPDATE players SET rate = ?, matches = matches + 1, wins = wins + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-        const historyStmt = db.prepare('INSERT INTO player_history (player_id, game_id, rate_before, rate_after, rank) VALUES (?, ?, ?, ?, ?)');
-
         for (let i = 0; i < this.state.players.length; i++) {
             const p = this.state.players[i];
             if (p.rank) {
@@ -156,25 +156,16 @@ export class GameManager {
                 
                 this.state.players[i] = newPlayer;
 
-                // DB Update
-                try {
-                    const isWin = p.rank === 1 ? 1 : 0;
-                    updateStmt.run(newPlayer.rate, isWin, newPlayer.id);
-                    historyStmt.run(newPlayer.id, gameId, oldRate, newPlayer.rate, p.rank);
-                } catch (e) {
-                    console.error("DB Update Failed for player", p.name, e);
-                }
+                // DB Update via Repository
+                const isWin = p.rank === 1;
+                PlayerRepository.updatePlayerRate(newPlayer.id, newPlayer.rate, isWin);
+                PlayerRepository.addGameHistory(newPlayer.id, gameId, oldRate, newPlayer.rate, p.rank);
             }
         }
         
         // Save Game Result Metadata
-        try {
-             db.prepare('INSERT INTO game_results (id, room_id, details) VALUES (?, ?, ?)').run(
-                 gameId, 
-                 this.roomId, 
-                 JSON.stringify(this.state.players.map(p => ({ id: p.id, name: p.name, rank: p.rank, rate: p.rate })))
-             );
-        } catch(e) { console.error(e); }
+        const details = JSON.stringify(this.state.players.map(p => ({ id: p.id, name: p.name, rank: p.rank, rate: p.rate })));
+        PlayerRepository.saveGameResult(gameId, this.roomId, details);
     }
 
     leave(playerId: string) {
@@ -548,20 +539,9 @@ export class GameManager {
         this.turnTimer = setTimeout(() => {
             console.log("Turn Timer Expired! Forcing Draw...");
             this.forceRandomDraw();
-            // Since this is async/background, we must broadcast the use personalized update manually
-            // We need a way to call the personalized broadcast from here? 
-            // The `io` object is available. But `getPersonalizedState` logic was in server.ts loop?
-            // Actually, we can move the loop logic to a helper or just emit full state for now? 
-            // Wait, if I emit full state, I regress on the "Flash" fix.
-            // I should duplicate the personalized broadcast loop here or make a helper.
-            // For now, I'll copy the loop logic.
-             (async () => {
-                 const sockets = await this.io.in(this.roomId).fetchSockets();
-                 sockets.forEach(s => {
-                    const viewerId = (s as any).playerId || '';
-                    s.emit('update', this.getPersonalizedState(viewerId));
-                 });
-             })();
+            
+            // Broadcast
+            broadcastGameState(this.io, this.roomId, this);
         }, 30000); // 30 seconds
     }
 
@@ -576,13 +556,7 @@ export class GameManager {
         this.draw(botId, this.state.targetPlayerId); // undefined index -> random
         
         // Broadcast Update
-        (async () => {
-             const sockets = await this.io.in(this.roomId).fetchSockets();
-             sockets.forEach(s => {
-                const viewerId = (s as any).playerId || '';
-                s.emit('update', this.getPersonalizedState(viewerId));
-             });
-         })();
+        broadcastGameState(this.io, this.roomId, this);
     }
 
     private stopTurnTimer() {
