@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         // Get top 20 players sorted by rate (descending)

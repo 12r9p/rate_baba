@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-in-prod";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
 

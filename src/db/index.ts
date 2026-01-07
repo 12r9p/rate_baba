@@ -1,19 +1,22 @@
-import { Database } from "bun:sqlite";
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'game.db');
+let db: any;
 
-// Ensure directory exists
-const dbDir = path.dirname(dbPath);
-if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-}
-
-const db = new Database(dbPath, { create: true });
-
-// Initialize Tables
-const initDb = () => {
+try {
+    const { Database } = require("bun:sqlite");
+    
+    const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'game.db');
+    
+    // Ensure directory exists
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+    
+    db = new Database(dbPath, { create: true });
+    
+    // Initialize Tables
     db.exec(`
         CREATE TABLE IF NOT EXISTS players (
             id TEXT PRIMARY KEY,
@@ -45,8 +48,15 @@ const initDb = () => {
         );
     `);
     console.log("Database initialized at", dbPath);
-};
 
-initDb();
+} catch (e) {
+    console.warn("Could not load bun:sqlite. This is expected during build if not running in Bun.", e);
+    // Mock DB for build time
+    db = {
+        prepare: () => ({ all: () => [], get: () => null, run: () => {} }),
+        exec: () => {},
+        transaction: (fn: any) => fn,
+    };
+}
 
 export default db;

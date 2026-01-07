@@ -27,6 +27,7 @@ export default function Home() {
     const [rankings, setRankings] = useState<RankingPlayer[]>([]);
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [joinRoomId, setJoinRoomId] = useState("");
+    const [customRoomId, setCustomRoomId] = useState("");
     const [showRankings, setShowRankings] = useState(false);
 
     // Rate & History State
@@ -121,8 +122,6 @@ export default function Home() {
             console.error(e);
         }
     };
-
-    const [customRoomId, setCustomRoomId] = useState("");
 
     const handleCreateRoom = () => {
         if (!name.trim()) return;
