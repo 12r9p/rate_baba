@@ -158,7 +158,7 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
     }
 
     return (
-        <main className="relative w-full h-[100dvh] overflow-hidden bg-slate-50 font-sans select-none touch-none flex flex-col items-center">
+        <main className="relative w-full h-[100dvh] overflow-hidden bg-slate-50 font-sans select-none touch-none flex flex-col items-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
             {/* Ambient Background Lights */}
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/20 blur-[120px] rounded-full pointer-events-none" />
             <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-200/20 blur-[120px] rounded-full pointer-events-none" />
@@ -172,7 +172,7 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
             />
 
             {/* Header Buttons */}
-            <div className="absolute top-4 left-4 z-30 flex gap-2">
+            <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] z-30 flex gap-2">
                 <button
                     onClick={() => {
                         setConfirmDialog({
