@@ -26,6 +26,14 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
     const { gameState, loading, myPlayer, myPlayerId, startGame, drawCard, tease, resetGame, voteToSkip, sendMessage, kickPlayer, shuffleHand } = useGame(roomId, { isSpectator });
     const [focusTargetId, setFocusTargetId] = useState<string | null>(null);
     const [detailPlayer, setDetailPlayer] = useState<any | null>(null);
+
+    // Update Title
+    useEffect(() => {
+        document.title = `RATE BABA | ${roomId}`;
+        return () => {
+            document.title = "RATE BABA";
+        };
+    }, [roomId]);
     const [showHistory, setShowHistory] = useState(false);
     const [showQRCode, setShowQRCode] = useState(false);
     const [playedIntro, setPlayedIntro] = useState(false);
