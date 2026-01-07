@@ -44,6 +44,19 @@ export class PlayerRepository {
         }
     }
 
+    static getPlayerWithHistory(id: string): (PlayerData & { history: number[] }) | undefined {
+        try {
+            const player = this.getPlayer(id);
+            if (!player) return undefined;
+
+            const history = this.getRecentRateHistory(id);
+            return { ...player, history };
+        } catch (e) {
+            console.error('Failed to get player with history:', e);
+            return undefined;
+        }
+    }
+
     static getRecentRateHistory(playerId: string, limit: number = 20): number[] {
         try {
             const historyRows = db.prepare('SELECT rate_after FROM player_history WHERE player_id = ? ORDER BY id DESC LIMIT ?').all(playerId, limit) as any[];

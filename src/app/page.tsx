@@ -7,6 +7,8 @@ import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { RankingsModal, RankingPlayer } from "@/components/home/RankingsModal";
+import { RateDisplay } from "@/components/home/RateDisplay";
+import { HistoryModal } from "@/components/home/HistoryModal";
 
 interface RoomSummary {
     id: string;
@@ -27,9 +29,44 @@ export default function Home() {
     const [joinRoomId, setJoinRoomId] = useState("");
     const [showRankings, setShowRankings] = useState(false);
 
+    // Rate & History State
+    const [myRate, setMyRate] = useState<number | null>(null);
+    const [prevRate, setPrevRate] = useState<number | null>(null);
+    const [rateHistory, setRateHistory] = useState<number[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+
     useEffect(() => {
         const storedName = localStorage.getItem('babanuki_player_name');
         if (storedName) setName(storedName);
+
+        // Fetch My Rate
+        fetch('/api/player/me')
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('Not authenticated');
+            })
+            .then(data => {
+                if (data.rate) {
+                    const lastRate = Number(localStorage.getItem('babanuki_last_rate'));
+                    // If we have a last rate, use it as previous. 
+                    // If not (first time), start specific logic? 
+                    // Actually, if lastRate exists, use it. If not, use current (no animation).
+                    // BUT user wants 1000 start? 
+                    // If data.rate is 1000 and lastRate is 0/null, it means fresh.
+                    // Let's just default to current rate if invalid.
+                    const startInfo = lastRate && !isNaN(lastRate) ? lastRate : data.rate;
+
+                    setPrevRate(startInfo);
+                    setMyRate(data.rate);
+                    setRateHistory(data.history || []);
+
+                    // Save new rate for next time
+                    localStorage.setItem('babanuki_last_rate', data.rate.toString());
+                }
+            })
+            .catch(() => {
+                // Ignore auth errors (guest)
+            });
 
         const socket = io();
         socket.on('connect', () => {
@@ -120,7 +157,7 @@ export default function Home() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8 }}
-                    className="text-center mb-16"
+                    className="text-center mb-10"
                 >
                     <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
                         RATE BABANUKI
@@ -129,6 +166,15 @@ export default function Home() {
                         ONLINE CARD GAME
                     </p>
                 </motion.div>
+
+                {/* Rate Display (Only if logged in/has rate) */}
+                {myRate !== null && prevRate !== null && (
+                    <RateDisplay
+                        currentRate={myRate}
+                        previousRate={prevRate}
+                        onClick={() => setShowHistory(true)}
+                    />
+                )}
 
                 {/* Rankings Button */}
                 <button
@@ -305,6 +351,17 @@ export default function Home() {
                         }
                     </AnimatePresence >
                 </div >
+
+                {/* History Modal */}
+                <AnimatePresence>
+                    {showHistory && (
+                        <HistoryModal
+                            isOpen={showHistory}
+                            onClose={() => setShowHistory(false)}
+                            history={rateHistory}
+                        />
+                    )}
+                </AnimatePresence>
 
                 {/* Rankings Modal */}
                 <AnimatePresence>
