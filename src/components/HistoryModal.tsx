@@ -32,7 +32,7 @@ export function HistoryModal({ players, history, onClose }: HistoryModalProps) {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col"
+                className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[80dvh] overflow-hidden flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">

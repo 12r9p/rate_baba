@@ -3,6 +3,7 @@
 import { Suit } from "@/types/game";
 import { clsx } from "clsx";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
 type CardProps = {
     id?: string;
@@ -48,9 +49,16 @@ export function Card({
                 number === 12 ? 'Q' :
                     number === 13 ? 'K' : number;
 
+    const [isTouch, setIsTouch] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            setIsTouch(window.matchMedia("(hover: none)").matches);
+        }
+    }, []);
+
     return (
         <motion.div
-            layoutId={id ? `card-${id}` : undefined}
             initial={false}
             animate={{
                 rotateY: isFaceDown ? 180 : 0,
@@ -58,7 +66,7 @@ export function Card({
                 scale: selected ? 1.05 : 1,
                 z: selected ? 50 : 0
             }}
-            whileHover={hoverable && !disabled ? { y: -20, boxShadow: "0 20px 30px rgba(0,0,0,0.15)" } : {}}
+            whileHover={!isTouch && hoverable && !disabled ? { y: -20, boxShadow: "0 20px 30px rgba(0,0,0,0.15)" } : {}}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className={clsx(
                 "relative preserve-3d cursor-pointer select-none rounded-[16px]", // 16px radius

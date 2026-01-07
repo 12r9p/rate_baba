@@ -31,6 +31,8 @@ export class GameManager {
             messages: []
         };
     }
+    
+    private disconnectTimeouts = new Map<string, NodeJS.Timeout>();
 
     // For Room List
     getSummary() {
@@ -92,9 +94,17 @@ export class GameManager {
 
     // ...
 
+
     join(name: string, playerId?: string): Player {
         let pId = playerId || uuidv4();
         
+        // 0. Check connection grace period
+        if (this.disconnectTimeouts.has(pId)) {
+            console.log(`Player ${pId} reconnected! Clearing disconnect timeout.`);
+            clearTimeout(this.disconnectTimeouts.get(pId)!);
+            this.disconnectTimeouts.delete(pId);
+        }
+
         // 1. Try to load from DB
         const row = PlayerRepository.getPlayer(pId);
         
@@ -117,7 +127,12 @@ export class GameManager {
         
         // Also check if already in room memory (reconnect)
         const existing = this.state.players.find(p => p.id === pId);
-        if (existing) return existing;
+        if (existing) {
+             if (name && existing.name !== name) {
+                 existing.name = name;
+             }
+             return existing;
+        }
 
         const newPlayer: Player = {
             id: pId,
@@ -168,20 +183,64 @@ export class GameManager {
         PlayerRepository.saveGameResult(gameId, this.roomId, details);
     }
 
+
+
+    // ...
+
     leave(playerId: string) {
-        // Don't remove immediately to allow reconnect?
-        // Or remove if LOBBY.
         if (this.state.phase === 'LOBBY') {
              this.state.players = this.state.players.filter(p => p.id !== playerId);
              
              // Reassign owner if owner left
              if (this.state.ownerId === playerId) {
-                 if (this.state.players.length > 0) {
-                     this.state.ownerId = this.state.players[0].id;
+                 const humanPlayers = this.state.players.filter(p => !p.isBot);
+                 if (humanPlayers.length > 0) {
+                     this.state.ownerId = humanPlayers[0].id;
                  } else {
+                     // No humans left? Clear bots too to effectively empty the room for deletion
+                     this.state.players = []; 
                      this.state.ownerId = '';
                  }
              }
+        } else {
+            // In-Game Leave (Graceful Handling)
+            // Do NOT remove immediately. Set a timeout.
+            const player = this.state.players.find(p => p.id === playerId);
+            if (!player || player.isBot) return;
+
+            console.log(`Player ${player.name} (${playerId}) disconnected. Waiting for reconnect...`);
+
+            if (this.disconnectTimeouts.has(playerId)) {
+                clearTimeout(this.disconnectTimeouts.get(playerId)!);
+            }
+
+            const timeout = setTimeout(() => {
+                console.log(`Grace period expired for ${player.name}. Removing player.`);
+                
+                // Actual Removal Logic
+                this.state.players = this.state.players.filter(p => p.id !== playerId);
+                this.disconnectTimeouts.delete(playerId);
+
+                // Check if only bots remain
+                const humans = this.state.players.filter(p => !p.isBot);
+                if (humans.length === 0) {
+                    console.log(`Room ${this.roomId} has no humans left. Resetting/Emptying.`);
+                    this.state.players = []; 
+                    this.state.phase = 'FINISHED'; 
+                    this.stopTurnTimer();
+                } else {
+                   // Handle turn logic if needed
+                   if (this.state.currentTurnPlayerId === playerId) {
+                       this.advanceTurn(0); 
+                   }
+                }
+                
+                // Notify via broadcast (triggered by calling context usually, but here we are in timeout)
+                broadcastGameState(this.io, this.roomId, this);
+
+            }, 15000); // 15 seconds grace period
+
+            this.disconnectTimeouts.set(playerId, timeout);
         }
     }
 
@@ -255,6 +314,13 @@ export class GameManager {
         this.state.currentTurnPlayerId = this.state.players[0].id;
         this.state.lastDiscard = null;
         this.updateTarget(this.state.currentTurnPlayerId);
+
+        // Initial Shuffle for all CPUs
+        this.state.players.forEach(p => {
+             if (p.isBot) {
+                 this.shuffleHand(p.id);
+             }
+        });
         
         this.startTurnTimer();
     }
@@ -268,8 +334,15 @@ export class GameManager {
         }
 
         // Check Threshold: Majority of active players (ceil to allow 1/2 players to kick in 2p game)
-        const activePlayers = this.state.players.filter(p => !p.rank);
-        const threshold = Math.ceil(activePlayers.length / 2);
+        const activeHumanPlayers = this.state.players.filter(p => !p.rank && !p.isBot);
+        // If no active humans, force draw immediately (or handle via auto-draw logic)
+        if (activeHumanPlayers.length === 0) {
+            this.forceRandomDraw();
+            this.state.votes = [];
+            return;
+        }
+
+        const threshold = Math.ceil(activeHumanPlayers.length / 2);
 
         if (this.state.votes.length >= threshold) {
             // Force Draw!
@@ -411,7 +484,7 @@ export class GameManager {
                 name: p.name,
                 rank: p.rank!,
                 rate: p.rate,
-                diff: p.rate - (p.rateHistory[p.rateHistory.length - 2] || 100)
+                diff: p.rate - (p.rateHistory[p.rateHistory.length - 2] || 1000)
             }))
         };
         this.state.history = [...(this.state.history || []), result];
@@ -455,6 +528,14 @@ export class GameManager {
 
         if (loops < this.state.players.length) {
             this.state.targetPlayerId = this.state.players[targetIndex].id;
+            
+            // Auto-shuffle if target is CPU
+            // This prevents humans from memorizing positions drawn from CPU
+            if (this.state.players[targetIndex].isBot) {
+                console.log(`Shuffling CPU hand: ${this.state.players[targetIndex].name}`);
+                this.shuffleHand(this.state.targetPlayerId);
+            }
+            
         } else {
             this.state.targetPlayerId = null;
         }

@@ -26,7 +26,7 @@ export default function AdminPage() {
 
     if (!connected) {
         return (
-            <div className="h-screen flex items-center justify-center bg-slate-100">
+            <div className="h-[100dvh] flex items-center justify-center bg-slate-100">
                 <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
                     <h1 className="text-2xl font-bold mb-4">Admin Console</h1>
                     <input
@@ -49,7 +49,7 @@ export default function AdminPage() {
 
     if (gameLoading || !gameState) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center bg-slate-100">
+            <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-100">
                 <div className="animate-spin text-4xl mb-4">⏳</div>
                 <p>Connecting to {roomId}...</p>
                 <button onClick={() => setConnected(false)} className="mt-4 text-blue-500 underline">Cancel</button>
@@ -58,7 +58,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="h-screen overflow-y-auto bg-slate-50 text-slate-800 p-8 font-sans">
+        <div className="h-[100dvh] overflow-y-auto bg-slate-50 text-slate-800 p-8 font-sans">
             <div className="max-w-6xl mx-auto">
                 <header className="flex justify-between items-center mb-12">
                     <div>

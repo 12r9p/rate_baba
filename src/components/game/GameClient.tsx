@@ -148,7 +148,7 @@ export function GameClient({ roomId, isSpectator = false }: GameClientProps) {
 
     if (loading || !gameState || gameState.phase === 'LOBBY') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-mono animate-pulse">
+            <div className="min-h-[100dvh] flex items-center justify-center bg-slate-50 text-slate-400 font-mono animate-pulse">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
                     <span className="text-slate-400 tracking-widest text-xs">CONNECTING TO GAME {roomId}...</span>

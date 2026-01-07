@@ -33,7 +33,7 @@ export function RankingsModal({ isOpen, onClose, rankings }: RankingsModalProps)
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className="fixed inset-0 flex items-center justify-center z-[51] pointer-events-none p-4"
             >
-                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto pointer-events-auto">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[80dvh] overflow-y-auto pointer-events-auto">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-bold text-slate-900">🏆 Top Players</h2>
                         <button

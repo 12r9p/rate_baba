@@ -14,10 +14,14 @@ type Props = {
 };
 
 export function PlayerAvatar({ name, rank, rate, isCurrentTurn, cardsCount, className, timerProgress }: Props) {
+    // Safe name handling
+    const safeName = name || "Unknown";
+
     // Calculate circle dasharray for timer (circumference of circle with r=30)
     const radius = 30;
     const circumference = 2 * Math.PI * radius;
-    const dashOffset = circumference * (1 - (timerProgress || 0) / 100);
+    const safeProgress = Number.isFinite(timerProgress) ? timerProgress! : 0;
+    const dashOffset = circumference * (1 - safeProgress / 100);
 
     return (
         <motion.div
@@ -68,12 +72,12 @@ export function PlayerAvatar({ name, rank, rate, isCurrentTurn, cardsCount, clas
 
                 {/* Avatar Circle */}
                 <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-lg shadow-inner relative z-10">
-                    {name.substring(0, 2).toUpperCase()}
+                    {safeName.substring(0, 2).toUpperCase()}
                 </div>
             </div>
 
             <div className="text-center">
-                <div className="font-bold text-slate-800 text-sm">{name}</div>
+                <div className="font-bold text-slate-800 text-sm truncate max-w-[80px]">{safeName}</div>
                 <div className="text-xs text-slate-500 font-mono mt-1">
                     Rate: {rate}
                 </div>

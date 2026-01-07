@@ -98,7 +98,7 @@ app.prepare().then(() => {
              const p = gm.join(finalName, playerId);
              
              // System Message
-             gm.postMessage('system', 'System', `${p.name} joined the room.`, true);
+             // Message removed per user request
              
              // Return success with player data
              if (callback) callback({ success: true, player: p, token: newToken });
@@ -124,37 +124,42 @@ app.prepare().then(() => {
         const actorId = playerId; // From closure
         if (!actorId && type !== 'get-state') return; // Must be logged in
 
-        switch (type) {
-            case 'message':
-                gm.postMessage(actorId!, playerName || 'Unknown', payload.content);
-                break;
-            case 'start':
-                gm.start();
-                break;
-            case 'draw':
-                gm.draw(actorId!, payload.targetPlayerId, payload.cardIndex);
-                break;
-            case 'voteToSkip':
-                gm.voteToSkip(actorId!);
-                break;
-            case 'tease':
-                gm.tease(actorId!, payload.cardIndex);
-                break;
-            case 'reset':
-                gm.reset(payload.hardReset);
-                break;
-            case 'adminDraw':
-                gm.draw(payload.actorId, payload.targetPlayerId, payload.cardIndex);
-                break;
-            case 'kick':
-                gm.kick(actorId!, payload.targetPlayerId);
-                break;
-            case 'shuffleHand':
-                gm.shuffleHand(actorId!);
-                break;
-            case 'add-bot':
-                gm.addBot(payload.name);
-                break;
+        try {
+            switch (type) {
+                case 'message':
+                    gm.postMessage(actorId!, playerName || 'Unknown', payload.content);
+                    break;
+                case 'start':
+                    console.log(`Starting game in room ${roomId}`);
+                    gm.start();
+                    break;
+                case 'draw':
+                    gm.draw(actorId!, payload.targetPlayerId, payload.cardIndex);
+                    break;
+                case 'voteToSkip':
+                    gm.voteToSkip(actorId!);
+                    break;
+                case 'tease':
+                    gm.tease(actorId!, payload.cardIndex);
+                    break;
+                case 'reset':
+                    gm.reset(payload.hardReset);
+                    break;
+                case 'adminDraw':
+                    gm.draw(payload.actorId, payload.targetPlayerId, payload.cardIndex);
+                    break;
+                case 'kick':
+                    gm.kick(actorId!, payload.targetPlayerId);
+                    break;
+                case 'shuffleHand':
+                    gm.shuffleHand(actorId!);
+                    break;
+                case 'add-bot':
+                    gm.addBot(payload.name);
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error processing action ${type} in room ${roomId}:`, error);
         }
 
         // Broadcast Personalized Updates

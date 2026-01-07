@@ -147,7 +147,7 @@ export default function Home() {
     // ...
 
     return (
-        <main className="min-h-screen bg-[#FAFAFA] text-slate-900 font-sans overflow-x-hidden overflow-y-auto selection:bg-slate-200 selection:text-black">
+        <main className="min-h-[100dvh] bg-[#FAFAFA] text-slate-900 font-sans overflow-y-auto selection:bg-slate-200 selection:text-black">
 
             <div className="relative z-10 max-w-xl mx-auto px-6 py-24 flex flex-col items-center">
 

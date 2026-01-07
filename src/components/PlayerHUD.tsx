@@ -50,7 +50,7 @@ export function PlayerHUD({ name, rate, rank, onClick, onShuffle, isMyTurn }: Pr
 
                 <div className="flex flex-col h-full justify-center">
                     <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-bold text-slate-800">{name}</span>
+                        <span className="text-sm font-bold text-slate-800 truncate max-w-[120px]">{name}</span>
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rating</span>
                     </div>
                     <div className="text-2xl font-black text-slate-800 leading-none tabular-nums tracking-tight">

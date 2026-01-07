@@ -3,6 +3,7 @@ import { Card as CardType, Player } from "@/types/game";
 import { Card } from "./Card";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE_ANIMATION } from "@/components/OpponentArea"; // Re-use constant if possible or redefine
+import { useState, useEffect } from "react";
 
 // Duplicate contant to avoid circular or messy imports if it's not in a shared lib
 const ANIMATION = {
@@ -18,6 +19,14 @@ type Props = {
 
 export function MyHand({ cards, onTease }: Props) {
     const isLargeHand = cards.length > 10;
+
+    const [isTouch, setIsTouch] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            setIsTouch(window.matchMedia("(hover: none)").matches);
+        }
+    }, []);
 
     return (
         <div className="fixed bottom-0 left-0 w-full z-40 flex justify-center items-end pointer-events-none pb-12">
@@ -38,7 +47,7 @@ export function MyHand({ cards, onTease }: Props) {
                                         zIndex: idx // Maintain stacking context
                                     }}
                                     exit={{ y: 200, opacity: 0, scale: 0.5 }}
-                                    whileHover={{ y: -10, scale: 1.1 }} // Pop to top on hover
+                                    whileHover={!isTouch ? { y: -10, scale: 1.1 } : {}} // Pop to top on hover
                                     onClick={() => onTease(idx)}
                                     className="relative cursor-pointer transition-all duration-200"
                                     style={{
@@ -92,13 +101,13 @@ export function MyHand({ cards, onTease }: Props) {
                                         opacity: 1,
                                         zIndex: idx // Stack order
                                     }}
-                                    whileHover={{
+                                    whileHover={!isTouch ? {
                                         y: 50, // Hover moves up more distinctively
                                         rotate: 0,
                                         scale: 1.1,
                                         // zIndex: 100, // REMOVED to maintain layers
                                         transition: { duration: 0.1 } // Snappy hover
-                                    }}
+                                    } : {}}
                                     exit={{ y: 200, opacity: 0 }}
                                     onClick={() => onTease(idx)}
                                     className="absolute bottom-0 origin-bottom pointer-events-auto cursor-pointer will-change-transform"

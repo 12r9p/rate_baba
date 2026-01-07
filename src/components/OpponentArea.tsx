@@ -48,6 +48,7 @@ export const OpponentArea = memo(function OpponentArea({
             }}
             className="flex flex-col items-center gap-6 relative"
         >
+            <div className="font-bold text-sm text-slate-700 truncate max-w-[100px] text-center">{player.name}</div>
             <div
                 className="relative z-20 cursor-pointer transition-all duration-500 rounded-full"
                 onClick={onDetail}
