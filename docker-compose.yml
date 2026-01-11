@@ -1,11 +1,10 @@
-name: rate-babanuki
+version: '3.8'
 
 services:
   babanuki:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: rate-babanuki
     restart: unless-stopped
     expose:
       - "3000"
@@ -15,10 +14,7 @@ services:
       - DB_PATH=/app/data/game.db
       - JWT_SECRET=${JWT_SECRET:-super-secret-key-change-in-prod}
     volumes:
-      # SQLiteデータベースの永続化
-      - ./data:/app/data
-      # ログの永続化（オプション）
-      - ./logs:/app/logs
+      - babanuki-data:/app/data
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/').then(() => process.exit(0)).catch(() => process.exit(1))"]
       interval: 30s
@@ -26,21 +22,31 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - babanuki-network
       - coolify
+      - default
+
     labels:
       - "traefik.enable=true"
+      # ホスト名のルール定義のみでOK
       - "traefik.http.routers.babanuki.rule=Host(`babanuki.s-t.work`)"
+      - "traefik.http.routers.babanuki.entrypoints=web" 
+      # 注意: Tunnel経由の場合、内部はhttp(web)で受けるのが一般的ですが、
+      # Coolifyの設定によってはwebsecureを強制している場合もあります。
+      # まずは entrypoints 指定を外してTraefikのデフォルトに任せるか、websecureにしておくのが無難です。
+      # 下記は「Coolify標準のTraefik」に合わせた設定です：
       - "traefik.http.routers.babanuki.entrypoints=websecure"
-      - "traefik.http.routers.babanuki.tls.certresolver=letsencrypt"
+      # 証明書リゾルバの設定(tls.certresolver)は削除してください。Cloudflareがやるので不要です。
+      # ただし、Traefikが「httpsで来ている」と認識させるためにtls=trueは残す場合がありますが、
+      # Cloudflare Tunnel -> Traefik(HTTP) の場合は tls=true すら不要なことが多いです。
+      # ここでは「CoolifyがSSL終端していると誤認しないように」シンプルにします。
+      
+      # 内部ポートの指定
       - "traefik.http.services.babanuki.loadbalancer.server.port=3000"
 
 networks:
-  babanuki-network:
-    driver: bridge
   coolify:
     external: true
 
 volumes:
-  data:
-  logs:
+  babanuki-data:
+    name: babanuki-data
