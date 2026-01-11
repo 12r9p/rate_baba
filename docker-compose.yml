@@ -7,8 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: rate-babanuki
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -27,10 +27,19 @@ services:
       start_period: 5s
     networks:
       - babanuki-network
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.babanuki.rule=Host(`babanuki.s-t.work`)"
+      - "traefik.http.routers.babanuki.entrypoints=websecure"
+      - "traefik.http.routers.babanuki.tls.certresolver=letsencrypt"
+      - "traefik.http.services.babanuki.loadbalancer.server.port=3000"
 
 networks:
   babanuki-network:
     driver: bridge
+  coolify:
+    external: true
 
 volumes:
   data:
