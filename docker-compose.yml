@@ -27,20 +27,14 @@ services:
 
     labels:
       - "traefik.enable=true"
-      # ホスト名のルール定義のみでOK
+      # ルーティング設定
       - "traefik.http.routers.babanuki.rule=Host(`babanuki.s-t.work`)"
-      - "traefik.http.routers.babanuki.entrypoints=web" 
-      # 注意: Tunnel経由の場合、内部はhttp(web)で受けるのが一般的ですが、
-      # Coolifyの設定によってはwebsecureを強制している場合もあります。
-      # まずは entrypoints 指定を外してTraefikのデフォルトに任せるか、websecureにしておくのが無難です。
-      # 下記は「Coolify標準のTraefik」に合わせた設定です：
       - "traefik.http.routers.babanuki.entrypoints=websecure"
-      # 証明書リゾルバの設定(tls.certresolver)は削除してください。Cloudflareがやるので不要です。
-      # ただし、Traefikが「httpsで来ている」と認識させるためにtls=trueは残す場合がありますが、
-      # Cloudflare Tunnel -> Traefik(HTTP) の場合は tls=true すら不要なことが多いです。
-      # ここでは「CoolifyがSSL終端していると誤認しないように」シンプルにします。
+      # TunnelがHTTPS(443)に投げているため、Traefik側もTLSとして受け取る必要がある
+      - "traefik.http.routers.babanuki.tls=true"
+      # 【重要】certresolver行は削除。証明書発行プロセスのエラー要因を排除する。
       
-      # 内部ポートの指定
+      # 内部ポート接続
       - "traefik.http.services.babanuki.loadbalancer.server.port=3000"
 
 networks:
